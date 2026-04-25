@@ -1,0 +1,87 @@
+name: Build Flutter Desktop
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  FLUTTER_VERSION: '3.29.3'
+
+jobs:
+  build-windows:
+    name: Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+      - run: flutter pub get
+      - run: flutter build windows --release
+      - name: Zip artifact
+        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath GitHub-Store-Flutter-Windows-x64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: GitHub-Store-Flutter-Windows-x64.zip
+
+  build-macos:
+    name: macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+      - run: flutter pub get
+      - run: flutter build macos --release
+      - name: Zip artifact
+        run: cd build/macos/Build/Products/Release && zip -r -9 "$GITHUB_WORKSPACE/GitHub-Store-Flutter-macos.zip" *.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: GitHub-Store-Flutter-macos.zip
+
+  build-linux:
+    name: Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y clang cmake ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev libayatana-appindicator3-dev
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+      - run: flutter pub get
+      - run: flutter build linux --release
+      - name: Tar bundle
+        run: tar -czf GitHub-Store-Flutter-Linux-x64.tar.gz -C build/linux/x64/release/ bundle/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-x64
+          path: GitHub-Store-Flutter-Linux-x64.tar.gz
+
+  release:
+    name: Release
+    needs: [build-windows, build-macos, build-linux]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            windows-x64/GitHub-Store-Flutter-Windows-x64.zip
+            macos/GitHub-Store-Flutter-macos.zip
+            linux-x64/GitHub-Store-Flutter-Linux-x64.tar.gz
+          generate_release_notes: true

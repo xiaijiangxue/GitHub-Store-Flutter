@@ -1,0 +1,29 @@
+# Flutter/Dart
+.dart_tool/
+.packages
+build/
+*.iml
+.idea/
+.metadata
+
+# Generated
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Env
+.env
+.env.*
+
+# IDE
+.vscode/
+*.swp
+*.swo
+
+# Misc
+*.log

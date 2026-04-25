@@ -129,7 +129,10 @@ jobs:
           echo "=== Step 4: Remove dSYM files ==="
           find "$APP_PATH" -name "*.dSYM" -type d -exec rm -rf {} + 2>/dev/null || true
 
-          echo "=== Step 5: Rebuild framework symlinks ==="
+          echo "=== Step 5: Re-sign after strip/lipo (fix codesign) ==="
+          codesign --force --deep --sign - "$APP_PATH"
+
+          echo "=== Step 6: Rebuild framework symlinks ==="
           for framework in "$FRAMEWORKS"/*.framework; do
             if [ -d "$framework" ]; then
               BINARY_NAME="$(basename "$framework" .framework)"
@@ -167,120 +170,6 @@ jobs:
         with:
           name: macos-arm64-release
           path: GitHub-Store-Flutter-macOS-ARM64.zip
-
-  build-macos-x64:
-    name: macOS Build (x86_64)
-    runs-on: macos-13
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
-
-      - name: Get dependencies
-        run: flutter pub get
-
-      - name: Build macOS (Release)
-        run: |
-          flutter build macos --release --tree-shake-icons
-
-      - name: Optimize & Package macOS x86_64
-        run: |
-          APP_PATH="build/macos/Build/Products/Release/github_store_flutter.app"
-          FRAMEWORKS="$APP_PATH/Contents/Frameworks"
-          ARCH="x86_64"
-
-          echo "=== Step 1: Strip debug symbols ==="
-          for framework in "$FRAMEWORKS"/*.framework; do
-            if [ -d "$framework" ]; then
-              BINARY_NAME="$(basename "$framework" .framework)"
-              for BINARY_PATH in "$framework/$BINARY_NAME" "$framework/Versions/A/$BINARY_NAME"; do
-                if [ -f "$BINARY_PATH" ]; then
-                  echo "  Stripping: $BINARY_PATH"
-                  strip -x -S "$BINARY_PATH" 2>/dev/null || true
-                fi
-              done
-            fi
-          done
-          for dylib in "$FRAMEWORKS"/*.dylib; do
-            if [ -f "$dylib" ]; then
-              echo "  Stripping: $(basename "$dylib")"
-              strip -x -S "$dylib" 2>/dev/null || true
-            fi
-          done
-
-          echo "=== Step 2: Thin frameworks to $ARCH only ==="
-          for framework in "$FRAMEWORKS"/*.framework; do
-            if [ -d "$framework" ]; then
-              BINARY_NAME="$(basename "$framework" .framework)"
-              for BINARY_PATH in "$framework/Versions/A/$BINARY_NAME" "$framework/$BINARY_NAME"; do
-                if [ -f "$BINARY_PATH" ]; then
-                  ARCHS=$(lipo -info "$BINARY_PATH" 2>/dev/null || echo "single")
-                  if echo "$ARCHS" | grep -q "arm64.*x86_64\|x86_64.*arm64"; then
-                    echo "  Thinning: $BINARY_PATH -> $ARCH"
-                    lipo -thin "$ARCH" -output "$BINARY_PATH" "$BINARY_PATH" 2>/dev/null || true
-                  fi
-                fi
-              done
-            fi
-          done
-          for dylib in "$FRAMEWORKS"/*.dylib; do
-            if [ -f "$dylib" ]; then
-              ARCHS=$(lipo -info "$dylib" 2>/dev/null || echo "single")
-              if echo "$ARCHS" | grep -q "arm64.*x86_64\|x86_64.*arm64"; then
-                echo "  Thinning: $(basename "$dylib") -> $ARCH"
-                lipo -thin "$ARCH" -output "$dylib" "$dylib" 2>/dev/null || true
-              fi
-            fi
-          done
-
-          echo "=== Step 3: Remove system Swift dylibs ==="
-          rm -f "$FRAMEWORKS"/libswift*.dylib
-
-          echo "=== Step 4: Remove dSYM files ==="
-          find "$APP_PATH" -name "*.dSYM" -type d -exec rm -rf {} + 2>/dev/null || true
-
-          echo "=== Step 5: Rebuild framework symlinks ==="
-          for framework in "$FRAMEWORKS"/*.framework; do
-            if [ -d "$framework" ]; then
-              BINARY_NAME="$(basename "$framework" .framework)"
-              if [ -d "$framework/Versions" ]; then
-                rm -f "$framework/Versions/Current"
-                ln -s A "$framework/Versions/Current"
-                rm -f "$framework/$BINARY_NAME"
-                ln -s "Versions/Current/$BINARY_NAME" "$framework/$BINARY_NAME"
-                if [ -d "$framework/Versions/A/Resources" ]; then
-                  rm -f "$framework/Resources"
-                  ln -s "Versions/Current/Resources" "$framework/Resources"
-                fi
-              fi
-            fi
-          done
-
-          APP_SIZE=$(du -sh "$APP_PATH" | cut -f1)
-          echo "App bundle size after optimization: $APP_SIZE"
-
-          cd "$APP_PATH/.."
-          zip -r -9 -y GitHub-Store-Flutter-macOS-x64.zip github_store_flutter.app/
-          mv GitHub-Store-Flutter-macOS-x64.zip "$GITHUB_WORKSPACE/"
-
-      - name: Report Size
-        run: |
-          ZIP_SIZE=$(du -sh GitHub-Store-Flutter-macOS-x64.zip | cut -f1)
-          echo "=== macOS x86_64 Build Size ==="
-          echo "ZIP: $ZIP_SIZE"
-          echo ""
-          echo "=== Framework Breakdown ==="
-          du -sh build/macos/Build/Products/Release/github_store_flutter.app/Contents/Frameworks/* 2>/dev/null | sort -rh | head -8
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-x64-release
-          path: GitHub-Store-Flutter-macOS-x64.zip
 
   build-linux:
     name: Linux Build
@@ -341,7 +230,7 @@ jobs:
 
   release:
     name: Create Release
-    needs: [build-windows, build-macos-arm64, build-macos-x64, build-linux]
+    needs: [build-windows, build-macos-arm64, build-linux]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
@@ -358,7 +247,6 @@ jobs:
           echo ""
           echo "Windows:      $(du -sh artifacts/windows-release/GitHub-Store-Flutter-Windows.zip | cut -f1)"
           echo "macOS ARM64:  $(du -sh artifacts/macos-arm64-release/GitHub-Store-Flutter-macOS-ARM64.zip | cut -f1)"
-          echo "macOS x86_64: $(du -sh artifacts/macos-x64-release/GitHub-Store-Flutter-macOS-x64.zip | cut -f1)"
           echo "Linux:        $(du -sh artifacts/linux-release/GitHub-Store-Flutter-Linux.tar.gz | cut -f1)"
           echo ""
           echo "========================================="
@@ -369,7 +257,6 @@ jobs:
           files: |
             artifacts/windows-release/GitHub-Store-Flutter-Windows.zip
             artifacts/macos-arm64-release/GitHub-Store-Flutter-macOS-ARM64.zip
-            artifacts/macos-x64-release/GitHub-Store-Flutter-macOS-x64.zip
             artifacts/linux-release/GitHub-Store-Flutter-Linux.tar.gz
           generate_release_notes: true
           draft: false

@@ -77,16 +77,18 @@ jobs:
         run: |
           APP_PATH="build/macos/Build/Products/Release/github_store_flutter.app"
           FRAMEWORKS="$APP_PATH/Contents/Frameworks"
+          ARCH="arm64"
 
           echo "=== Step 1: Strip debug symbols ==="
           for framework in "$FRAMEWORKS"/*.framework; do
             if [ -d "$framework" ]; then
               BINARY_NAME="$(basename "$framework" .framework)"
-              BINARY_PATH="$framework/$BINARY_NAME"
-              if [ -f "$BINARY_PATH" ]; then
-                echo "  Stripping: $(basename "$framework")"
-                strip -x -S "$BINARY_PATH" 2>/dev/null || true
-              fi
+              for BINARY_PATH in "$framework/$BINARY_NAME" "$framework/Versions/A/$BINARY_NAME"; do
+                if [ -f "$BINARY_PATH" ]; then
+                  echo "  Stripping: $BINARY_PATH"
+                  strip -x -S "$BINARY_PATH" 2>/dev/null || true
+                fi
+              done
             fi
           done
           for dylib in "$FRAMEWORKS"/*.dylib; do
@@ -96,49 +98,60 @@ jobs:
             fi
           done
 
-          echo "=== Step 2: Thin frameworks to arm64 only ==="
+          echo "=== Step 2: Thin frameworks to $ARCH only ==="
           for framework in "$FRAMEWORKS"/*.framework; do
             if [ -d "$framework" ]; then
               BINARY_NAME="$(basename "$framework" .framework)"
-              BINARY_PATH="$framework/$BINARY_NAME"
-              if [ -f "$BINARY_PATH" ]; then
-                ARCHS=$(lipo -info "$BINARY_PATH" 2>/dev/null || echo "single")
-                if echo "$ARCHS" | grep -q "arm64.*x86_64\|x86_64.*arm64"; then
-                  echo "  Thinning: $(basename "$framework") -> arm64"
-                  lipo -thin arm64 -output "$BINARY_PATH" "$BINARY_PATH" 2>/dev/null || true
+              for BINARY_PATH in "$framework/Versions/A/$BINARY_NAME" "$framework/$BINARY_NAME"; do
+                if [ -f "$BINARY_PATH" ]; then
+                  ARCHS=$(lipo -info "$BINARY_PATH" 2>/dev/null || echo "single")
+                  if echo "$ARCHS" | grep -q "arm64.*x86_64\|x86_64.*arm64"; then
+                    echo "  Thinning: $BINARY_PATH -> $ARCH"
+                    lipo -thin "$ARCH" -output "$BINARY_PATH" "$BINARY_PATH" 2>/dev/null || true
+                  fi
                 fi
-              fi
+              done
             fi
           done
           for dylib in "$FRAMEWORKS"/*.dylib; do
             if [ -f "$dylib" ]; then
               ARCHS=$(lipo -info "$dylib" 2>/dev/null || echo "single")
               if echo "$ARCHS" | grep -q "arm64.*x86_64\|x86_64.*arm64"; then
-                echo "  Thinning: $(basename "$dylib") -> arm64"
-                lipo -thin arm64 -output "$dylib" "$dylib" 2>/dev/null || true
+                echo "  Thinning: $(basename "$dylib") -> $ARCH"
+                lipo -thin "$ARCH" -output "$dylib" "$dylib" 2>/dev/null || true
               fi
             fi
           done
 
           echo "=== Step 3: Remove system Swift dylibs ==="
-          for dylib in "$FRAMEWORKS"/libswift*.dylib; do
-            if [ -f "$dylib" ]; then
-              echo "  Removing: $(basename "$dylib")"
-              rm -f "$dylib"
-            fi
-          done
+          rm -f "$FRAMEWORKS"/libswift*.dylib
 
           echo "=== Step 4: Remove dSYM files ==="
           find "$APP_PATH" -name "*.dSYM" -type d -exec rm -rf {} + 2>/dev/null || true
 
+          echo "=== Step 5: Rebuild framework symlinks ==="
+          for framework in "$FRAMEWORKS"/*.framework; do
+            if [ -d "$framework" ]; then
+              BINARY_NAME="$(basename "$framework" .framework)"
+              if [ -d "$framework/Versions" ]; then
+                rm -f "$framework/Versions/Current"
+                ln -s A "$framework/Versions/Current"
+                rm -f "$framework/$BINARY_NAME"
+                ln -s "Versions/Current/$BINARY_NAME" "$framework/$BINARY_NAME"
+                if [ -d "$framework/Versions/A/Resources" ]; then
+                  rm -f "$framework/Resources"
+                  ln -s "Versions/Current/Resources" "$framework/Resources"
+                fi
+              fi
+            fi
+          done
+
           APP_SIZE=$(du -sh "$APP_PATH" | cut -f1)
           echo "App bundle size after optimization: $APP_SIZE"
 
-          mkdir -p package
-          cp -r "$APP_PATH" package/
-          cd package
-          zip -r -9 -y ../GitHub-Store-Flutter-macOS-ARM64.zip github_store_flutter.app/
-          cd ..
+          cd "$APP_PATH/.."
+          zip -r -9 -y GitHub-Store-Flutter-macOS-ARM64.zip github_store_flutter.app/
+          mv GitHub-Store-Flutter-macOS-ARM64.zip "$GITHUB_WORKSPACE/"
 
       - name: Report Size
         run: |
@@ -178,16 +191,18 @@ jobs:
         run: |
           APP_PATH="build/macos/Build/Products/Release/github_store_flutter.app"
           FRAMEWORKS="$APP_PATH/Contents/Frameworks"
+          ARCH="x86_64"
 
           echo "=== Step 1: Strip debug symbols ==="
           for framework in "$FRAMEWORKS"/*.framework; do
             if [ -d "$framework" ]; then
               BINARY_NAME="$(basename "$framework" .framework)"
-              BINARY_PATH="$framework/$BINARY_NAME"
-              if [ -f "$BINARY_PATH" ]; then
-                echo "  Stripping: $(basename "$framework")"
-                strip -x -S "$BINARY_PATH" 2>/dev/null || true
-              fi
+              for BINARY_PATH in "$framework/$BINARY_NAME" "$framework/Versions/A/$BINARY_NAME"; do
+                if [ -f "$BINARY_PATH" ]; then
+                  echo "  Stripping: $BINARY_PATH"
+                  strip -x -S "$BINARY_PATH" 2>/dev/null || true
+                fi
+              done
             fi
           done
           for dylib in "$FRAMEWORKS"/*.dylib; do
@@ -197,49 +212,60 @@ jobs:
             fi
           done
 
-          echo "=== Step 2: Thin frameworks to x86_64 only ==="
+          echo "=== Step 2: Thin frameworks to $ARCH only ==="
           for framework in "$FRAMEWORKS"/*.framework; do
             if [ -d "$framework" ]; then
               BINARY_NAME="$(basename "$framework" .framework)"
-              BINARY_PATH="$framework/$BINARY_NAME"
-              if [ -f "$BINARY_PATH" ]; then
-                ARCHS=$(lipo -info "$BINARY_PATH" 2>/dev/null || echo "single")
-                if echo "$ARCHS" | grep -q "arm64.*x86_64\|x86_64.*arm64"; then
-                  echo "  Thinning: $(basename "$framework") -> x86_64"
-                  lipo -thin x86_64 -output "$BINARY_PATH" "$BINARY_PATH" 2>/dev/null || true
+              for BINARY_PATH in "$framework/Versions/A/$BINARY_NAME" "$framework/$BINARY_NAME"; do
+                if [ -f "$BINARY_PATH" ]; then
+                  ARCHS=$(lipo -info "$BINARY_PATH" 2>/dev/null || echo "single")
+                  if echo "$ARCHS" | grep -q "arm64.*x86_64\|x86_64.*arm64"; then
+                    echo "  Thinning: $BINARY_PATH -> $ARCH"
+                    lipo -thin "$ARCH" -output "$BINARY_PATH" "$BINARY_PATH" 2>/dev/null || true
+                  fi
                 fi
-              fi
+              done
             fi
           done
           for dylib in "$FRAMEWORKS"/*.dylib; do
             if [ -f "$dylib" ]; then
               ARCHS=$(lipo -info "$dylib" 2>/dev/null || echo "single")
               if echo "$ARCHS" | grep -q "arm64.*x86_64\|x86_64.*arm64"; then
-                echo "  Thinning: $(basename "$dylib") -> x86_64"
-                lipo -thin x86_64 -output "$dylib" "$dylib" 2>/dev/null || true
+                echo "  Thinning: $(basename "$dylib") -> $ARCH"
+                lipo -thin "$ARCH" -output "$dylib" "$dylib" 2>/dev/null || true
               fi
             fi
           done
 
           echo "=== Step 3: Remove system Swift dylibs ==="
-          for dylib in "$FRAMEWORKS"/libswift*.dylib; do
-            if [ -f "$dylib" ]; then
-              echo "  Removing: $(basename "$dylib")"
-              rm -f "$dylib"
-            fi
-          done
+          rm -f "$FRAMEWORKS"/libswift*.dylib
 
           echo "=== Step 4: Remove dSYM files ==="
           find "$APP_PATH" -name "*.dSYM" -type d -exec rm -rf {} + 2>/dev/null || true
 
+          echo "=== Step 5: Rebuild framework symlinks ==="
+          for framework in "$FRAMEWORKS"/*.framework; do
+            if [ -d "$framework" ]; then
+              BINARY_NAME="$(basename "$framework" .framework)"
+              if [ -d "$framework/Versions" ]; then
+                rm -f "$framework/Versions/Current"
+                ln -s A "$framework/Versions/Current"
+                rm -f "$framework/$BINARY_NAME"
+                ln -s "Versions/Current/$BINARY_NAME" "$framework/$BINARY_NAME"
+                if [ -d "$framework/Versions/A/Resources" ]; then
+                  rm -f "$framework/Resources"
+                  ln -s "Versions/Current/Resources" "$framework/Resources"
+                fi
+              fi
+            fi
+          done
+
           APP_SIZE=$(du -sh "$APP_PATH" | cut -f1)
           echo "App bundle size after optimization: $APP_SIZE"
 
-          mkdir -p package
-          cp -r "$APP_PATH" package/
-          cd package
-          zip -r -9 -y ../GitHub-Store-Flutter-macOS-x64.zip github_store_flutter.app/
-          cd ..
+          cd "$APP_PATH/.."
+          zip -r -9 -y GitHub-Store-Flutter-macOS-x64.zip github_store_flutter.app/
+          mv GitHub-Store-Flutter-macOS-x64.zip "$GITHUB_WORKSPACE/"
 
       - name: Report Size
         run: |

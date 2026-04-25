@@ -38,11 +38,7 @@ jobs:
         run: |
           $releaseDir = "build\windows\x64\runner\Release"
           # 删除 PDB 调试符号文件
-          Remove-Item "$releaseDir\*.pdb" -Force -ErrorAction SilentlyContinue
-          # 删除 data 目录（如果存在）
-          if (Test-Path "$releaseDir\data") {
-            Remove-Item "$releaseDir\data\*" -Force -ErrorAction SilentlyContinue
-          }
+          Get-ChildItem "$releaseDir\*.pdb" -ErrorAction SilentlyContinue | Remove-Item -Force
           mkdir package
           Copy-Item -Recurse "$releaseDir\*" package\
           cd package

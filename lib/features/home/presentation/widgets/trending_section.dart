@@ -214,7 +214,7 @@ class RepoSection extends ConsumerWidget {
             Icon(
               Icons.inbox_outlined,
               size: 40,
-              color: theme.colorScheme.outline.withValues(alpha: 0.5),
+              color: theme.colorScheme.outline.withOpacity( 0.5),
             ),
             const SizedBox(height: 8),
             Text(
@@ -238,7 +238,7 @@ class RepoSection extends ConsumerWidget {
             Icon(
               Icons.error_outline,
               size: 40,
-              color: theme.colorScheme.error.withValues(alpha: 0.7),
+              color: theme.colorScheme.error.withOpacity( 0.7),
             ),
             const SizedBox(height: 8),
             Text(

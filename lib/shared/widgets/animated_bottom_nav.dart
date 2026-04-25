@@ -206,10 +206,10 @@ class _AnimatedBottomNavState extends State<AnimatedBottomNav>
     return Container(
       height: widget.height,
       decoration: BoxDecoration(
-        color: bgColor.withValues(alpha: widget.frostOpacity),
+        color: bgColor.withOpacity( widget.frostOpacity),
         border: Border(
           top: BorderSide(
-            color: theme.dividerColor.withValues(alpha: 0.3),
+            color: theme.dividerColor.withOpacity( 0.3),
             width: 0.5,
           ),
         ),
@@ -272,7 +272,7 @@ class _AnimatedBottomNavState extends State<AnimatedBottomNav>
           borderRadius: BorderRadius.circular(2),
           boxShadow: [
             BoxShadow(
-              color: theme.colorScheme.primary.withValues(alpha: 0.3),
+              color: theme.colorScheme.primary.withOpacity( 0.3),
               blurRadius: 8,
               spreadRadius: 1,
             ),
@@ -373,7 +373,7 @@ class _AnimatedBottomNavState extends State<AnimatedBottomNav>
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: (badge.color ?? theme.colorScheme.error).withValues(alpha: 0.4),
+            color: (badge.color ?? theme.colorScheme.error).withOpacity( 0.4),
             blurRadius: 4,
           ),
         ],

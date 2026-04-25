@@ -413,7 +413,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       boxShadow: isSelected
                           ? [
                               BoxShadow(
-                                color: scheme.previewColor.withValues(alpha: 0.4),
+                                color: scheme.previewColor.withOpacity( 0.4),
                                 blurRadius: 8,
                               ),
                             ]
@@ -829,7 +829,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 ? [
                                     BoxShadow(
                                       color:
-                                          scheme.previewColor.withValues(alpha: 0.4),
+                                          scheme.previewColor.withOpacity( 0.4),
                                       blurRadius: 8,
                                     ),
                                   ]

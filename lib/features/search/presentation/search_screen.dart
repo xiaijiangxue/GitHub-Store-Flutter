@@ -141,7 +141,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           Icon(
             Icons.search,
             size: 80,
-            color: theme.colorScheme.outline.withValues(alpha: 0.4),
+            color: theme.colorScheme.outline.withOpacity( 0.4),
           ),
           const SizedBox(height: 16),
           Text(

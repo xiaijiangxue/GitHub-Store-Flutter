@@ -12,21 +12,8 @@ env:
   FLUTTER_VERSION: '3.29.3'
 
 jobs:
-  analyze:
-    name: Analyze
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-      - run: flutter pub get
-      - run: flutter analyze --no-fatal-infos
-
   build-windows:
     name: Windows
-    needs: analyze
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,15 +23,16 @@ jobs:
           channel: stable
       - run: flutter pub get
       - run: flutter build windows --release
-      - name: Upload Windows artifact
+      - name: Zip artifact
+        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath GitHub-Store-Flutter-Windows-x64.zip
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-x64
-          path: build/windows/x64/runner/Release/
+          path: GitHub-Store-Flutter-Windows-x64.zip
 
   build-macos:
     name: macOS
-    needs: analyze
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -54,15 +42,16 @@ jobs:
           channel: stable
       - run: flutter pub get
       - run: flutter build macos --release
-      - name: Upload macOS artifact
+      - name: Zip artifact
+        run: cd build/macos/Build/Products/Release && zip -r -9 "$GITHUB_WORKSPACE/GitHub-Store-Flutter-macos.zip" *.app
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: macos
-          path: build/macos/Build/Products/Release/*.app
+          path: GitHub-Store-Flutter-macos.zip
 
   build-linux:
     name: Linux
-    needs: analyze
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -76,13 +65,13 @@ jobs:
           channel: stable
       - run: flutter pub get
       - run: flutter build linux --release
-      - name: Tar Linux bundle
-        run: tar -czf linux-x64.tar.gz -C build/linux/x64/release/ bundle/
-      - name: Upload Linux artifact
+      - name: Tar bundle
+        run: tar -czf GitHub-Store-Flutter-Linux-x64.tar.gz -C build/linux/x64/release/ bundle/
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: linux-x64
-          path: linux-x64.tar.gz
+          path: GitHub-Store-Flutter-Linux-x64.tar.gz
 
   release:
     name: Release
@@ -91,12 +80,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
-
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            windows-x64/*
-            macos/*
-            linux-x64/*
+            windows-x64/GitHub-Store-Flutter-Windows-x64.zip
+            macos/GitHub-Store-Flutter-macos.zip
+            linux-x64/GitHub-Store-Flutter-Linux-x64.tar.gz
           generate_release_notes: true

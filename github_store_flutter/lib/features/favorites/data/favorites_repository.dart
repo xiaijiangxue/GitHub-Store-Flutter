@@ -1,12 +1,10 @@
-import 'package:drift/drift.dart';
-
 import '../../../core/database/app_database.dart';
 import '../../../core/models/owner_model.dart';
 import '../../../core/models/repository_model.dart';
 
 /// Repository for managing favorited repositories in the local database.
 ///
-/// Favorites are stored in the [Repositories] table using the `isFavorite`
+/// Favorites are stored in the [repositories] table using the `isFavorite`
 /// column. This repository provides methods to query, add, remove, and
 /// toggle favorites, as well as clear all favorites.
 class FavoritesRepository {
@@ -21,14 +19,7 @@ class FavoritesRepository {
   /// Returns a list of [RepositoryModel] populated from the database rows,
   /// ordered by sort order (ascending) then stars (descending).
   Future<List<RepositoryModel>> getAllFavorites() async {
-    final rows = await (select(_database.repositories)
-          ..where((t) => t.isFavorite.equals(true))
-          ..orderBy([
-            (t) => OrderingTerm.asc(t.sortOrder),
-            (t) => OrderingTerm.desc(t.stargazersCount),
-          ]))
-        .get();
-
+    final rows = await _database.getFavorites();
     return rows.map(_rowToModel).toList();
   }
 
@@ -101,9 +92,7 @@ class FavoritesRepository {
 
   /// Clear all favorites by setting `isFavorite = false` on every repository.
   Future<void> clearAll() async {
-    final favorites = await (select(_database.repositories)
-          ..where((t) => t.isFavorite.equals(true)))
-        .get();
+    final favorites = await _database.getFavorites();
 
     for (final row in favorites) {
       await _database.toggleFavorite(row.id, false);
@@ -115,9 +104,7 @@ class FavoritesRepository {
   /// Unlike [clearAll] (which just unsets the flag), this permanently removes
   /// the rows that are only in the DB because they were favorited.
   Future<void> deleteAllFavorites() async {
-    await (_database.delete(_database.repositories)
-          ..where((t) => t.isFavorite.equals(true)))
-        .go();
+    await _database.deleteFavorites();
   }
 
   // ── Private Helpers ─────────────────────────────────────────────────────
@@ -138,25 +125,25 @@ class FavoritesRepository {
     final id = fullName.hashCode.abs();
 
     await _database.upsertRepository(
-      RepositoriesCompanion(
-        id: Value(id),
-        fullName: Value(fullName),
-        owner: Value(owner),
-        name: Value(name),
-        description: Value(description),
-        avatarUrl: Value(avatarUrl),
-        language: Value(language),
-        stargazersCount: Value(stars),
-        htmlUrl: Value('https://github.com/$fullName'),
-        cachedAt: Value(DateTime.now()),
+      DbRepository(
+        id: id,
+        fullName: fullName,
+        owner: owner,
+        name: name,
+        description: description,
+        htmlUrl: 'https://github.com/$fullName',
+        avatarUrl: avatarUrl,
+        language: language,
+        stargazersCount: stars,
+        cachedAt: DateTime.now(),
       ),
     );
 
     return id;
   }
 
-  /// Convert a database [Repository] row to a domain [RepositoryModel].
-  RepositoryModel _rowToModel(Repository row) {
+  /// Convert a database [DbRepository] row to a domain [RepositoryModel].
+  RepositoryModel _rowToModel(DbRepository row) {
     return RepositoryModel(
       id: row.id,
       name: row.name,
@@ -196,8 +183,8 @@ class FavoritesRepository {
   }
 
   /// Parse the JSON-encoded topics string into a list.
-  List<String> _parseTopics(String? topicsJson) {
-    if (topicsJson == null || topicsJson.isEmpty) return const [];
+  List<String> _parseTopics(String topicsJson) {
+    if (topicsJson.isEmpty) return const [];
     if (topicsJson == '[]') return const [];
     try {
       final decoded = List<dynamic>.from(
@@ -220,7 +207,7 @@ class FavoritesRepository {
 class _JsonDecoder {
   const _JsonDecoder();
   dynamic convert(String source) {
-    return _parse(const _JsonSource(source));
+    return _parse(_JsonSource(source));
   }
 
   dynamic _parse(_JsonSource src) {

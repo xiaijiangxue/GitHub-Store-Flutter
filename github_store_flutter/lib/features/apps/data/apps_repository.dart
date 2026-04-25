@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/database/app_database.dart';
@@ -29,11 +28,7 @@ class AppsRepository {
   /// Returns active installations (where `uninstalledAt` is null) ordered
   /// by most recently installed first.
   Future<List<InstalledAppModel>> getInstalledApps() async {
-    final rows = await (select(_database.installations)
-          ..where((t) => t.uninstalledAt.isNull())
-          ..orderBy([(t) => OrderingTerm.desc(t.installedAt)]))
-        .get();
-
+    final rows = await _database.getInstallations(activeOnly: true);
     return rows.map(_rowToModel).toList();
   }
 
@@ -41,19 +36,18 @@ class AppsRepository {
   ///
   /// Useful for reactive UI updates when installations change.
   Stream<List<InstalledAppModel>> watchInstalledApps() {
-    return (select(_database.installations)
-          ..where((t) => t.uninstalledAt.isNull())
-          ..orderBy([(t) => OrderingTerm.desc(t.installedAt)]))
-        .watch()
-        .map((rows) => rows.map(_rowToModel).toList());
+    return _database
+        .watchInstallations()
+        .map((rows) => rows
+            .where((r) => r.uninstalledAt == null)
+            .map(_rowToModel)
+            .toList());
   }
 
   /// Get the total count of installed applications.
   Future<int> getAppCount() async {
-    final count = await (select(_database.installations)
-          ..where((t) => t.uninstalledAt.isNull()))
-        .get();
-    return count.length;
+    final rows = await _database.getInstallations(activeOnly: true);
+    return rows.length;
   }
 
   /// Get the count of applications that have available updates.
@@ -68,10 +62,8 @@ class AppsRepository {
   /// Check if a specific app (by owner/name) is already tracked.
   Future<bool> isAppTracked(String owner, String name) async {
     final fullName = '$owner/$name';
-    final existing = await (select(_database.installations)
-          ..where((t) =>
-              t.repoFullName.equals(fullName) & t.uninstalledAt.isNull()))
-        .getSingleOrNull();
+    final existing =
+        await _database.getInstallationByRepoFullName(fullName);
     return existing != null;
   }
 
@@ -80,17 +72,14 @@ class AppsRepository {
   /// Add a new installed application to the database.
   Future<void> addInstalledApp(InstalledAppModel app) async {
     final fullName = '${app.owner}/${app.name}';
-    await into(_database.installations).insert(
-      InstallationsCompanion(
-        repoFullName: Value(fullName),
-        installedVersion: Value(app.installedVersion ?? ''),
-        assetName: Value(app.installedAssetName ?? ''),
-        installerPath: Value(app.installedAssetUrl ?? ''),
-        installMethod: Value(app.installMethod ?? 'manual'),
-        status: const Value('completed'),
-        installedAt: Value(app.installedAt ?? app.installTime ?? DateTime.now()),
-        updatedAt: Value(DateTime.now()),
-      ),
+    await _database.insertInstallation(
+      repoFullName: fullName,
+      installedVersion: app.installedVersion ?? '',
+      assetName: app.installedAssetName ?? '',
+      installerPath: app.installedAssetUrl ?? '',
+      installMethod: app.installMethod ?? 'manual',
+      status: 'completed',
+      installedAt: app.installedAt ?? app.installTime ?? DateTime.now(),
     );
   }
 
@@ -99,19 +88,15 @@ class AppsRepository {
   /// Marks the installation as uninstalled rather than permanently deleting it.
   Future<void> removeInstalledApp(String owner, String name) async {
     final fullName = '$owner/$name';
-    final existing = await (select(_database.installations)
-          ..where((t) =>
-              t.repoFullName.equals(fullName) & t.uninstalledAt.isNull()))
-        .getSingleOrNull();
+    final existing =
+        await _database.getInstallationByRepoFullName(fullName);
 
     if (existing != null) {
-      await (update(_database.installations)
-            ..where((t) => t.id.equals(existing.id)))
-          .write(InstallationsCompanion(
-        status: const Value('uninstalled'),
-        uninstalledAt: Value(DateTime.now()),
-        updatedAt: Value(DateTime.now()),
-      ));
+      await _database.updateInstallation(
+        existing.id,
+        status: 'uninstalled',
+        uninstalledAt: DateTime.now(),
+      );
     }
   }
 
@@ -125,30 +110,17 @@ class AppsRepository {
     String? installMethod,
   }) async {
     final fullName = '$owner/$name';
-    final existing = await (select(_database.installations)
-          ..where((t) =>
-              t.repoFullName.equals(fullName) & t.uninstalledAt.isNull()))
-        .getSingleOrNull();
+    final existing =
+        await _database.getInstallationByRepoFullName(fullName);
 
     if (existing != null) {
-      final companion = InstallationsCompanion(
-        updatedAt: Value(DateTime.now()),
+      await _database.updateInstallation(
+        existing.id,
+        installedVersion: version,
+        installerPath: assetUrl,
+        assetName: assetName,
+        installMethod: installMethod,
       );
-      if (version != null) {
-        companion.installedVersion = Value(version);
-      }
-      if (assetUrl != null) {
-        companion.installerPath = Value(assetUrl);
-      }
-      if (assetName != null) {
-        companion.assetName = Value(assetName);
-      }
-      if (installMethod != null) {
-        companion.installMethod = Value(installMethod);
-      }
-      await (update(_database.installations)
-            ..where((t) => t.id.equals(existing.id)))
-          .write(companion);
     }
   }
 
@@ -256,5 +228,27 @@ class AppsRepository {
     } catch (e) {
       throw FormatException('Failed to parse import data: $e');
     }
+  }
+
+  // ── Private Helpers ─────────────────────────────────────────────────────
+
+  /// Convert a database [DbInstallation] row to a domain [InstalledAppModel].
+  InstalledAppModel _rowToModel(DbInstallation row) {
+    final parts = row.repoFullName.split('/');
+    final owner = parts.length >= 2 ? parts[0] : '';
+    final name = parts.length >= 2 ? parts.sublist(1).join('/') : row.repoFullName;
+
+    return InstalledAppModel(
+      id: row.id,
+      owner: owner,
+      name: name,
+      fullName: row.repoFullName,
+      installedVersion: row.installedVersion,
+      installedAssetUrl: row.installerPath,
+      installedAssetName: row.assetName,
+      installMethod: row.installMethod,
+      installedAt: row.installedAt,
+      uninstalledAt: row.uninstalledAt,
+    );
   }
 }

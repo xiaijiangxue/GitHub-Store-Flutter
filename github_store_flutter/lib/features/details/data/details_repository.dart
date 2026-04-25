@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:drift/drift.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
@@ -69,35 +68,33 @@ class DetailsRepository {
 
     // Also upsert into local DB
     await _database.upsertRepository(
-      RepositoriesCompanion(
-        id: Value(repo.id),
-        fullName: Value(repo.fullName),
-        owner: Value(repo.ownerLogin),
-        name: Value(repo.name),
-        description: Value(repo.description),
-        htmlUrl:
-            Value(repo.htmlUrl ?? 'https://github.com/${repo.fullName}'),
-        avatarUrl: Value(repo.ownerAvatarUrl),
-        language: Value(repo.language),
-        languageColor: Value(repo.languageColor),
-        stargazersCount: Value(repo.stars),
-        forksCount: Value(repo.forks),
-        openIssuesCount: Value(repo.openIssues),
-        watchersCount: Value(repo.watchers),
-        subscribersCount: Value(repo.subscribers),
-        size: Value(repo.size),
-        defaultBranch: Value(repo.defaultBranch),
-        isFork: Value(repo.isFork),
-        isArchived: Value(repo.isArchived),
-        license: Value(repo.license?.spdxId),
-        licenseName: Value(repo.license?.name),
-        topics:
-            Value('[${repo.topics.map((t) => '"$t"').join(',')}]'),
-        homepage: Value(repo.homepage),
-        createdAt: Value(repo.createdAt),
-        pushedAt: Value(repo.pushedAt),
-        updatedAt: Value(repo.updatedAt),
-        cachedAt: Value(DateTime.now()),
+      DbRepository(
+        id: repo.id,
+        fullName: repo.fullName,
+        owner: repo.ownerLogin,
+        name: repo.name,
+        description: repo.description,
+        htmlUrl: repo.htmlUrl ?? 'https://github.com/${repo.fullName}',
+        avatarUrl: repo.ownerAvatarUrl,
+        language: repo.language,
+        languageColor: repo.languageColor,
+        stargazersCount: repo.stars,
+        forksCount: repo.forks,
+        openIssuesCount: repo.openIssues,
+        watchersCount: repo.watchers,
+        subscribersCount: repo.subscribers,
+        size: repo.size,
+        defaultBranch: repo.defaultBranch,
+        isFork: repo.isFork,
+        isArchived: repo.isArchived,
+        license: repo.license?.spdxId,
+        licenseName: repo.license?.name,
+        topics: '[${repo.topics.map((t) => '"$t"').join(',')}]',
+        homepage: repo.homepage,
+        createdAt: repo.createdAt,
+        pushedAt: repo.pushedAt,
+        updatedAt: repo.updatedAt,
+        cachedAt: DateTime.now(),
       ),
     );
 

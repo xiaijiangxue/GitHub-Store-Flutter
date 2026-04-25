@@ -517,7 +517,7 @@ class LinuxPlatformService implements PlatformService {
 
     for (final entry in commands) {
       try {
-        final result = await Process.run(entry[0], entry[1] as List<String>);
+        final result = await Process.run(entry[0] as String, entry[1] as List<String>);
         if (result.exitCode == 0) return true;
       } catch (_) {
         continue;
@@ -538,7 +538,7 @@ class LinuxPlatformService implements PlatformService {
 
     for (final entry in commands) {
       try {
-        final result = await Process.run(entry[0], entry[1] as List<String>);
+        final result = await Process.run(entry[0] as String, entry[1] as List<String>);
         if (result.exitCode == 0) return true;
       } catch (_) {
         continue;

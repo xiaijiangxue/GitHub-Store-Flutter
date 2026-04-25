@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/auth/auth_service.dart';
 import '../../../../core/models/user_model.dart';
-import '../providers/auth_provider.dart';
+import 'providers/auth_provider.dart';
 
 /// GitHub authentication screen.
 ///

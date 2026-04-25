@@ -2,15 +2,20 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/cache/cache_manager.dart';
-import '../../../core/database/app_database.dart';
-import '../../../core/models/category_model.dart';
-import '../../../core/models/repository_model.dart';
-import '../../../core/network/api_client.dart';
-import '../../../core/network/github_store_api.dart';
-import '../../home/data/home_repository.dart';
+import '../../../../core/cache/cache_manager.dart';
+import '../../../../core/database/app_database.dart';
+import '../../../../core/models/category_model.dart';
+import '../../../../core/models/repository_model.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../../core/network/github_store_api.dart';
+import '../../data/home_repository.dart';
 
 // ── Infrastructure Providers ──────────────────────────────────────────────
+
+/// Provider for the API client singleton.
+final apiClientProvider = Provider<ApiClient>((ref) {
+  return ApiClient();
+});
 
 /// Provider for the local database instance.
 final databaseProvider = Provider<AppDatabase>((ref) {
@@ -27,13 +32,6 @@ final cacheManagerProvider = Provider<CacheManager>((ref) {
 final githubStoreApiProvider = Provider<GitHubStoreApi>((ref) {
   final apiClient = ref.watch(apiClientProvider);
   return GitHubStoreApi(apiClient);
-});
-
-// Use the code-generated apiClientProvider from api_client.g.dart
-// Since we can't reference the generated provider directly without running
-// build_runner, we create a fallback that instantiates ApiClient directly.
-final apiClientProvider = Provider<ApiClient>((ref) {
-  return ApiClient();
 });
 
 /// Provider for the home repository.
@@ -73,6 +71,9 @@ class HomeTrendingNotifier extends AsyncNotifier<List<RepositoryModel>> {
       _debouncedLoad();
     });
 
+    // Register cleanup callback
+    ref.onDispose(() { _debounceTimer?.cancel(); });
+
     final repos = await repo.getTrending(platform: platform);
 
     if (ref.read(homeHideSeenProvider)) {
@@ -96,12 +97,6 @@ class HomeTrendingNotifier extends AsyncNotifier<List<RepositoryModel>> {
     // A full implementation would check recently_viewed table.
     return repos;
   }
-
-  @override
-  void dispose() {
-    _debounceTimer?.cancel();
-    super.dispose();
-  }
 }
 
 /// Hot releases provider.
@@ -119,6 +114,9 @@ class HomeHotReleasesNotifier extends AsyncNotifier<List<RepositoryModel>> {
     ref.listen(homePlatformFilterProvider, (_, __) {
       _debouncedLoad();
     });
+
+    // Register cleanup callback
+    ref.onDispose(() { _debounceTimer?.cancel(); });
 
     final repos = await repo.getHotReleases(platform: platform);
 
@@ -140,12 +138,6 @@ class HomeHotReleasesNotifier extends AsyncNotifier<List<RepositoryModel>> {
   List<RepositoryModel> _filterSeen(List<RepositoryModel> repos) {
     return repos;
   }
-
-  @override
-  void dispose() {
-    _debounceTimer?.cancel();
-    super.dispose();
-  }
 }
 
 /// Most popular repositories provider.
@@ -163,6 +155,9 @@ class HomePopularNotifier extends AsyncNotifier<List<RepositoryModel>> {
     ref.listen(homePlatformFilterProvider, (_, __) {
       _debouncedLoad();
     });
+
+    // Register cleanup callback
+    ref.onDispose(() { _debounceTimer?.cancel(); });
 
     final repos = await repo.getMostPopular(platform: platform);
 
@@ -183,12 +178,6 @@ class HomePopularNotifier extends AsyncNotifier<List<RepositoryModel>> {
 
   List<RepositoryModel> _filterSeen(List<RepositoryModel> repos) {
     return repos;
-  }
-
-  @override
-  void dispose() {
-    _debounceTimer?.cancel();
-    super.dispose();
   }
 }
 

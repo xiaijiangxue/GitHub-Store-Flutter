@@ -2,14 +2,13 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/cache/cache_manager.dart';
-import '../../../core/database/app_database.dart';
-import '../../../core/models/repository_model.dart';
-import '../../../core/models/search_result_model.dart';
-import '../../../core/network/api_client.dart';
-import '../../../core/network/github_store_api.dart';
-import '../../home/presentation/providers/home_provider.dart';
-import '../data/search_repository.dart';
+import '../../../../core/cache/cache_manager.dart';
+import '../../../../core/database/app_database.dart';
+import '../../../../core/models/repository_model.dart';
+import '../../../../core/models/search_result_model.dart';
+import '../../../../core/network/github_store_api.dart';
+import '../../../home/presentation/providers/home_provider.dart';
+import '../../data/search_repository.dart';
 
 // ── Search Repository Provider ────────────────────────────────────────────
 
@@ -90,15 +89,7 @@ final searchLoadingMoreProvider = StateProvider<bool>((ref) {
   return false;
 });
 
-// ── Debounce Logic ────────────────────────────────────────────────────────
-
-/// Provider that manages debounced search execution.
-///
-/// When the query changes, it waits 300ms before triggering the actual search.
-final searchDebouncerProvider = Provider<AsyncNotifierProvider<
-    SearchDebouncerNotifier, SearchResultModel>>(
-  () => searchResultsNotifierProvider,
-);
+// ── Main Search Results Notifier ──────────────────────────────────────────
 
 /// Main search results notifier with debounce support.
 final searchResultsNotifierProvider =
@@ -108,10 +99,13 @@ final searchResultsNotifierProvider =
 
 class SearchResultsNotifier extends AsyncNotifier<SearchResultModel> {
   Timer? _debounceTimer;
-  CancelToken? _cancelToken;
+  bool _isCancelled = false;
 
   @override
   Future<SearchResultModel> build() async {
+    // Register cleanup callback
+    ref.onDispose(() { _debounceTimer?.cancel(); });
+
     // Watch for query changes and trigger debounced search
     ref.listen(searchQueryProvider, (previous, next) {
       _debouncedSearch();
@@ -128,8 +122,8 @@ class SearchResultsNotifier extends AsyncNotifier<SearchResultModel> {
 
   /// Debounce search by 300ms.
   void _debouncedSearch() {
+    _isCancelled = true;
     _debounceTimer?.cancel();
-    _cancelToken?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 300), () {
       _performSearch();
     });
@@ -137,6 +131,7 @@ class SearchResultsNotifier extends AsyncNotifier<SearchResultModel> {
 
   /// Execute the search with current filters.
   Future<void> _performSearch() async {
+    _isCancelled = false;
     final query = ref.read(searchQueryProvider);
     if (query.trim().isEmpty) {
       ref.read(searchResultsItemsProvider.notifier).state = [];
@@ -152,8 +147,6 @@ class SearchResultsNotifier extends AsyncNotifier<SearchResultModel> {
     ref.read(searchErrorProvider.notifier).state = null;
     ref.read(searchCurrentPageProvider.notifier).state = 1;
     ref.read(searchResultsItemsProvider.notifier).state = [];
-
-    _cancelToken = CancelToken();
 
     try {
       final repo = ref.read(searchRepositoryProvider);
@@ -171,7 +164,7 @@ class SearchResultsNotifier extends AsyncNotifier<SearchResultModel> {
         page: 1,
       );
 
-      if (!_cancelToken!.isCancelled) {
+      if (!_isCancelled) {
         ref.read(searchResultsItemsProvider.notifier).state = result.items;
         ref.read(searchTotalCountProvider.notifier).state = result.totalCount;
         ref.read(searchHasMoreProvider.notifier).state = result.hasMore;
@@ -183,12 +176,12 @@ class SearchResultsNotifier extends AsyncNotifier<SearchResultModel> {
         ref.invalidate(searchHistoryProvider);
       }
     } catch (e) {
-      if (!_cancelToken!.isCancelled) {
+      if (!_isCancelled) {
         ref.read(searchErrorProvider.notifier).state = e.toString();
         state = AsyncError(e, StackTrace.current);
       }
     } finally {
-      if (!_cancelToken!.isCancelled) {
+      if (!_isCancelled) {
         ref.read(searchIsSearchingProvider.notifier).state = false;
       }
     }
@@ -235,7 +228,6 @@ class SearchResultsNotifier extends AsyncNotifier<SearchResultModel> {
         totalCount: result.totalCount,
         currentPage: nextPage,
         perPage: result.perPage,
-        hasMore: result.hasMore,
         query: query,
       ));
     } catch (e) {
@@ -267,12 +259,6 @@ class SearchResultsNotifier extends AsyncNotifier<SearchResultModel> {
     state = AsyncData(SearchResultModel.empty());
   }
 
-  @override
-  void dispose() {
-    _debounceTimer?.cancel();
-    _cancelToken?.cancel();
-    super.dispose();
-  }
 }
 
 // ── Search History Provider ───────────────────────────────────────────────
@@ -282,19 +268,6 @@ final searchHistoryProvider = FutureProvider<List<String>>((ref) async {
   final repo = ref.watch(searchRepositoryProvider);
   return repo.getSearchHistory();
 });
-
-// ── Helper ────────────────────────────────────────────────────────────────
-
-/// Simple cancel token for aborting in-flight searches.
-class CancelToken {
-  bool _isCancelled = false;
-
-  bool get isCancelled => _isCancelled;
-
-  void cancel() {
-    _isCancelled = true;
-  }
-}
 
 // ── Sort Options ──────────────────────────────────────────────────────────
 

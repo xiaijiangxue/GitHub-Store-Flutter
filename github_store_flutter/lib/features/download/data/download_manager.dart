@@ -180,7 +180,7 @@ class DownloadManager {
 
     if (entry == null) return;
     final task = entry.value;
-    if (!task.canCancel) return;
+    if (!task.status.canCancel) return;
 
     // Cancel the Dio request
     final token = task.cancelToken;
@@ -205,7 +205,7 @@ class DownloadManager {
   /// Cancel all active and queued downloads.
   void cancelAll() {
     final keysToCancel = _tasks.entries
-        .where((e) => e.value.canCancel)
+        .where((e) => e.value.status.canCancel)
         .map((e) => e.key)
         .toList();
 

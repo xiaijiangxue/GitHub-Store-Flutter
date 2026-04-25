@@ -7,6 +7,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'core/models/settings_model.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/auth/auth_service.dart';
@@ -123,6 +124,9 @@ class _GitHubStoreAppState extends ConsumerState<GitHubStoreApp>
       case AppLifecycleState.resumed:
         // App came to foreground, check for updates
         widget.updateChecker.checkForUpdate();
+        break;
+      case AppLifecycleState.inactive:
+        // App is inactive
         break;
       case AppLifecycleState.paused:
         // App went to background, flush telemetry events
@@ -326,7 +330,6 @@ class _GitHubStoreAppState extends ConsumerState<GitHubStoreApp>
       key: const ValueKey('GitHubStore'),
       title: 'GitHub Store',
       debugShowCheckedModeBanner: false,
-      navigatorKey: globalNavigatorKey,
 
       // Theme - reactive to settings changes
       theme: AppTheme.lightTheme(colorSchemeIndex),
@@ -346,7 +349,7 @@ class _GitHubStoreAppState extends ConsumerState<GitHubStoreApp>
       localeResolutionCallback: _localeResolutionCallback,
 
       // Router
-      routerConfig: AppRouter.router,
+      routerConfig: ref.watch(appRouterProvider),
 
       // Builder for additional configurations
       builder: (context, child) {

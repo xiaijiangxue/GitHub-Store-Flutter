@@ -5,11 +5,11 @@ import '../../../../core/models/repository_model.dart';
 import '../../../../core/models/user_model.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/github_store_api.dart';
-import '../../home/presentation/providers/home_provider.dart';
-import '../data/dev_profile_repository.dart';
+import '../../../home/presentation/providers/home_provider.dart';
+import '../../data/dev_profile_repository.dart';
 
 // Re-export shared providers
-export '../../home/presentation/providers/home_provider.dart'
+export '../../../home/presentation/providers/home_provider.dart'
     show databaseProvider, cacheManagerProvider, githubStoreApiProvider,
         apiClientProvider;
 
@@ -114,6 +114,11 @@ class UserReposNotifier extends StateNotifier<_UserReposState> {
 
   final DevProfileRepository _repo;
 
+  /// Convenience getters delegating to the internal state.
+  List<RepositoryModel> get repos => state.repos;
+  bool get hasMore => state.hasMore;
+  bool get isLoading => state.isLoading;
+
   /// Load the initial set of repositories for a username.
   Future<void> loadRepos(String username) async {
     state = state.copyWith(isLoading: true);
@@ -169,18 +174,17 @@ final userReposNotifierProvider = Provider<UserReposNotifier>((ref) {
 
 /// Provider that exposes the list of repos for the current profile.
 final userReposProvider = Provider<List<RepositoryModel>>((ref) {
-  final notifier = ref.watch(userReposNotifierProvider);
-  return notifier.repos;
+  return ref.watch(userReposNotifierProvider).state.repos;
 });
 
 /// Whether more repos are available.
 final userReposHasMoreProvider = Provider<bool>((ref) {
-  return ref.watch(userReposNotifierProvider).hasMore;
+  return ref.watch(userReposNotifierProvider).state.hasMore;
 });
 
 /// Whether repos are currently being loaded.
 final userReposIsLoadingProvider = Provider<bool>((ref) {
-  return ref.watch(userReposNotifierProvider).isLoading;
+  return ref.watch(userReposNotifierProvider).state.isLoading;
 });
 
 // ── Filtered Repos Provider ───────────────────────────────────────────────
@@ -211,8 +215,8 @@ final filteredReposProvider = Provider<List<RepositoryModel>>((ref) {
     final lower = search.toLowerCase();
     filtered = filtered.where((repo) {
       return repo.name.toLowerCase().contains(lower) ||
-          repo.description?.toLowerCase().contains(lower) == true ||
-          repo.language?.toLowerCase().contains(lower) == true;
+          (repo.description?.toLowerCase().contains(lower) ?? false) ||
+          (repo.language?.toLowerCase().contains(lower) ?? false);
     }).toList();
   }
 

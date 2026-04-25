@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:drift/drift.dart';
-
 import '../database/app_database.dart';
 
 /// Entry for a cached item stored in the database.

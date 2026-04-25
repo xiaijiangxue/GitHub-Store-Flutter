@@ -1,9 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/models/repository_model.dart';
-import '../../details/presentation/providers/details_provider.dart';
-import '../../home/presentation/providers/home_provider.dart';
-import '../data/starred_repository.dart';
+import '../../../../core/models/repository_model.dart';
+import '../../../../core/network/github_api.dart';
+import '../../../details/presentation/providers/details_provider.dart';
+import '../../../home/presentation/providers/home_provider.dart';
+import '../../data/starred_repository.dart';
 
 // ── Repository Provider ────────────────────────────────────────────────────
 
@@ -18,7 +19,7 @@ final starredRepositoryProvider = Provider<StarredRepository>((ref) {
 /// Whether the user is authenticated (has a GitHub token).
 ///
 /// Reads from the existing auth infrastructure.
-final starredAuthProvider = FutureProvider<bool>((ref) async {
+final starredAuthProvider = Provider<bool>((ref) {
   final repo = ref.watch(starredRepositoryProvider);
   return repo.isAuthenticated;
 });

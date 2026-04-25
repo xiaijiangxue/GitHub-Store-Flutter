@@ -306,7 +306,7 @@ class _RepositoryCardState extends State<RepositoryCard>
               vertical: isCompact ? 2 : 3,
             ),
             decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer.withOpacity(0.5),
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
@@ -479,21 +479,4 @@ enum CardDensity {
         CardDensity.normal => 14,
         CardDensity.comfortable => 18,
       };
-}
-
-/// A convenience builder that applies the hover scale animation.
-class AnimatedBuilder extends AnimatedWidget {
-  const AnimatedBuilder({
-    required super.listenable,
-    required this.builder,
-    super.child,
-    super.key,
-  });
-
-  final Widget Function(BuildContext context, Widget? child) builder;
-
-  @override
-  Widget build(BuildContext context) {
-    return builder(context, child);
-  }
 }

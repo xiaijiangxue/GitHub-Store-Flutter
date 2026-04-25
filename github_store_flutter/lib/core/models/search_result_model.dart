@@ -9,7 +9,6 @@ class SearchResultModel {
     required this.totalCount,
     this.currentPage = 1,
     this.perPage = 30,
-    this.hasMore = false,
     this.incompleteResults = false,
     this.query,
   });
@@ -46,7 +45,6 @@ class SearchResultModel {
     int? totalCount,
     int? currentPage,
     int? perPage,
-    bool? hasMore,
     bool? incompleteResults,
     String? query,
   }) {
@@ -55,7 +53,6 @@ class SearchResultModel {
       totalCount: totalCount ?? this.totalCount,
       currentPage: currentPage ?? this.currentPage,
       perPage: perPage ?? this.perPage,
-      hasMore: hasMore ?? this.hasMore,
       incompleteResults: incompleteResults ?? this.incompleteResults,
       query: query ?? this.query,
     );
@@ -68,7 +65,6 @@ class SearchResultModel {
       totalCount: 0,
       currentPage: 1,
       perPage: 30,
-      hasMore: false,
     );
   }
 
@@ -121,8 +117,9 @@ class SearchResultModel {
       totalCount: json['total'] as int? ??
           json['total_count'] as int? ??
           0,
-      items: (json['data'] as List<dynamic>? ??
-              json['items'] as List<dynamic>?)
+      items: ((json['data'] as List<dynamic>?) ??
+              (json['items'] as List<dynamic>?) ??
+              [])
           .map((e) =>
               RepositoryModel.fromJson(e as Map<String, dynamic>))
           .toList(),

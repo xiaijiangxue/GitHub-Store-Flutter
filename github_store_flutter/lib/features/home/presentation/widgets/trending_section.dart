@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/models/repository_model.dart';
-import '../../../../shared/widgets/repository_card.dart';
+import '../../../../shared/widgets/repository_card.dart' hide AnimatedBuilder;
 import '../../../../core/router/app_router.dart';
 
 /// A section displaying a list of repositories in a grid.
@@ -213,7 +214,7 @@ class RepoSection extends ConsumerWidget {
             Icon(
               Icons.inbox_outlined,
               size: 40,
-              color: theme.colorScheme.outline.withOpacity(0.5),
+              color: theme.colorScheme.outline.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 8),
             Text(
@@ -237,7 +238,7 @@ class RepoSection extends ConsumerWidget {
             Icon(
               Icons.error_outline,
               size: 40,
-              color: theme.colorScheme.error.withOpacity(0.7),
+              color: theme.colorScheme.error.withValues(alpha: 0.7),
             ),
             const SizedBox(height: 8),
             Text(
@@ -374,19 +375,4 @@ class _ShimmerCardState extends State<_ShimmerCard>
   }
 }
 
-/// A convenience builder that applies an animation.
-class AnimatedBuilder extends AnimatedWidget {
-  const AnimatedBuilder({
-    required super.listenable,
-    required this.builder,
-    super.child,
-    super.key,
-  });
 
-  final Widget Function(BuildContext context, Widget? child) builder;
-
-  @override
-  Widget build(BuildContext context) {
-    return builder(context, child);
-  }
-}

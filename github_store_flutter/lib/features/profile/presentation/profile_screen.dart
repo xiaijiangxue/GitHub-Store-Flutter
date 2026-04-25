@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../auth/presentation/providers/auth_provider.dart';
-import '../providers/profile_provider.dart';
+import '../../auth/presentation/providers/auth_provider.dart';
+import 'providers/profile_provider.dart';
 
 /// User profile screen showing auth status, stats, and navigation menu.
 class ProfileScreen extends ConsumerWidget {

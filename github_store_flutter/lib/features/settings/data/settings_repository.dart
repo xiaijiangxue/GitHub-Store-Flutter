@@ -8,7 +8,7 @@ import '../../../core/models/settings_model.dart';
 
 /// Repository for persisting and retrieving app settings.
 ///
-/// Uses the Drift [AppSettings] table in [AppDatabase] for persistence.
+/// Uses the [app_settings] table in [AppDatabase] for persistence.
 /// All settings are stored as key-value pairs where the value is a JSON string.
 class SettingsRepository {
   SettingsRepository({required AppDatabase database}) : _db = database;

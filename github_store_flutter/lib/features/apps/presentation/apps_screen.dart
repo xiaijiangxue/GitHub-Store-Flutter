@@ -5,8 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/models/installed_app_model.dart';
 import '../../../../core/models/release_asset_model.dart';
 import '../../../../core/router/app_router.dart';
-import '../providers/apps_provider.dart';
-import '../widgets/link_app_dialog.dart';
+import 'providers/apps_provider.dart';
+import 'widgets/link_app_dialog.dart';
 
 /// Installed apps management screen.
 ///
@@ -38,7 +38,7 @@ class _AppsScreenState extends ConsumerState<AppsScreen> {
     final appsAsync = ref.watch(installedAppsProvider);
     final updateCount = ref.watch(updateCountProvider);
     final isChecking = ref.watch(isCheckingUpdatesProvider);
-    final searchQuery = ref.watch(searchQueryProvider);
+    final searchQuery = ref.watch(appsSearchQueryProvider);
     final sortMode = ref.watch(sortModeProvider);
 
     return Scaffold(
@@ -156,7 +156,7 @@ class _AppsScreenState extends ConsumerState<AppsScreen> {
                       ? IconButton(
                           icon: const Icon(Icons.clear, size: 18),
                           onPressed: () {
-                            ref.read(searchQueryProvider.notifier).state = '';
+                            ref.read(appsSearchQueryProvider.notifier).state = '';
                           },
                         )
                       : null,
@@ -170,7 +170,7 @@ class _AppsScreenState extends ConsumerState<AppsScreen> {
                   ),
                 ),
                 onChanged: (value) {
-                  ref.read(searchQueryProvider.notifier).state = value;
+                  ref.read(appsSearchQueryProvider.notifier).state = value;
                 },
               ),
             ),

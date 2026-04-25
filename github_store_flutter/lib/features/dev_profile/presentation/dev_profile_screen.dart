@@ -9,7 +9,7 @@ import '../../../../core/models/repository_model.dart';
 import '../../../../core/models/user_model.dart';
 import '../../../../core/router/app_router.dart';
 import '../data/dev_profile_repository.dart';
-import '../providers/dev_profile_provider.dart';
+import 'providers/dev_profile_provider.dart';
 
 /// Developer profile screen showing user info and their repositories.
 ///
@@ -129,8 +129,8 @@ class _DevProfileScreenState extends ConsumerState<DevProfileScreen> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      theme.colorScheme.primary.withOpacity(0.15),
-                      theme.colorScheme.secondaryContainer.withOpacity(0.08),
+                      theme.colorScheme.primary.withValues(alpha: 0.15),
+                      theme.colorScheme.secondaryContainer.withValues(alpha: 0.08),
                       theme.scaffoldBackgroundColor,
                     ],
                   ),
@@ -141,7 +141,7 @@ class _DevProfileScreenState extends ConsumerState<DevProfileScreen> {
 
           // ── Profile Header ───────────────────────────────────────────────
           profileAsync.when(
-            loading: () => const SliverToBoxAdapter(
+            loading: () => SliverToBoxAdapter(
               child: _ProfileShimmer(),
             ),
             error: (error, _) => SliverToBoxAdapter(
@@ -194,7 +194,7 @@ class _DevProfileScreenState extends ConsumerState<DevProfileScreen> {
           if (!_showAllRepos)
             SliverToBoxAdapter(
               child: reposLoading && repos.isEmpty
-                  ? const _ReposShimmer()
+                  ? _ReposShimmer()
                   : repos.isEmpty
                       ? const _EmptyReposView(
                           message: 'No public repositories found')

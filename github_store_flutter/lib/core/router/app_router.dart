@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../features/apps/presentation/apps_screen.dart';
 import '../../features/details/presentation/details_screen.dart';
@@ -14,8 +14,6 @@ import '../../features/recently_viewed/presentation/recently_viewed_screen.dart'
 import '../../features/search/presentation/search_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/starred/presentation/starred_screen.dart';
-
-part 'app_router.g.dart';
 
 /// Enum for all named routes in the app.
 enum AppRoute {
@@ -34,8 +32,7 @@ enum AppRoute {
 }
 
 /// Provider for the GoRouter instance.
-@Riverpod(keepAlive: true)
-GoRouter appRouter(Ref ref) {
+final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: AppRoute.home.path,
     debugLogDiagnostics: true,
@@ -174,7 +171,7 @@ GoRouter appRouter(Ref ref) {
       ),
     ],
   );
-}
+});
 
 // ── Extension for route paths ─────────────────────────────────────────────
 

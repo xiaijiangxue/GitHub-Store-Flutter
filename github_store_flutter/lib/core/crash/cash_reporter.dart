@@ -135,7 +135,7 @@ class CrashReporter {
   ///   crashReporter.handleZoneError,
   /// );
   /// ```
-  static void runZoned(Runnable body, void Function(Object, StackTrace) onError) {
+  static void runZoned(void Function() body, void Function(Object, StackTrace) onError) {
     runZonedGuarded(body, onError);
   }
 

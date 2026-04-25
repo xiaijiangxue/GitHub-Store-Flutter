@@ -207,9 +207,6 @@ class ReadmeViewer extends StatelessWidget {
             horizontal: 12,
             vertical: 8,
           ),
-          tableColumnWidths: const {
-            0: FlexColumnWidth(1.0),
-          },
           // Lists
           listBullet: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.primary,

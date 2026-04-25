@@ -5,7 +5,7 @@ import '../../../../core/models/installed_app_model.dart';
 import '../../../../core/models/release_asset_model.dart';
 import '../../../../core/models/release_model.dart';
 import '../../../../core/network/github_store_api.dart';
-import '../../home/presentation/providers/home_provider.dart';
+import '../../../home/presentation/providers/home_provider.dart';
 import '../providers/apps_provider.dart';
 
 /// Dialog for linking existing installed apps to their GitHub repositories.
@@ -356,7 +356,7 @@ class _LinkAppDialogState extends ConsumerState<LinkAppDialog> {
         DropdownButtonFormField<ReleaseModel>(
           value: _selectedRelease,
           isDense: true,
-          decoration: const OutlineInputBorder(),
+          decoration: const InputDecoration(),
           items: _releases.map((r) {
             return DropdownMenuItem(
               value: r,
@@ -385,7 +385,7 @@ class _LinkAppDialogState extends ConsumerState<LinkAppDialog> {
           DropdownButtonFormField<ReleaseAssetModel>(
             value: _selectedAsset,
             isDense: true,
-            decoration: const OutlineInputBorder(),
+            decoration: const InputDecoration(),
             items: _selectedRelease!.assets.map((a) {
               return DropdownMenuItem(
                 value: a,

@@ -393,7 +393,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                theme.colorScheme.primary.withOpacity(0.12),
+                theme.colorScheme.primary.withValues(alpha:0.12),
                 theme.scaffoldBackgroundColor,
               ],
             ),
@@ -520,7 +520,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
               color: theme.colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(6),
               border: Border.all(
-                color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+                color: theme.colorScheme.outlineVariant.withValues(alpha:0.5),
               ),
             ),
             child: Row(
@@ -569,11 +569,11 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withOpacity(0.5),
+                color: theme.colorScheme.primaryContainer.withValues(alpha:0.5),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color:
-                      theme.colorScheme.primary.withOpacity(0.2),
+                      theme.colorScheme.primary.withValues(alpha:0.2),
                 ),
               ),
               child: Text(
@@ -598,10 +598,8 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     ColorScheme colorScheme,
     RepositoryModel repo,
   ) {
-    final starredAsync = ref.watch(starredProvider(_param));
-    final favoritedAsync = ref.watch(favoritedProvider(_param));
-    final isStarred = starredAsync.maybeWhen(data: (v) => v, orElse: () => false);
-    final isFavorited = favoritedAsync.maybeWhen(data: (v) => v, orElse: () => false);
+    final isStarred = ref.watch(starredProvider(_param));
+    final isFavorited = ref.watch(favoritedProvider(_param));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -650,8 +648,8 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
                       : null,
                   side: BorderSide(
                     color: isStarred
-                        ? const Color(0xFFE3B341).withOpacity(0.5)
-                        : null,
+                        ? const Color(0xFFE3B341)
+                        : Colors.transparent,
                   ),
                 ),
               ),
@@ -675,8 +673,8 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
                       : null,
                   side: BorderSide(
                     color: isFavorited
-                        ? colorScheme.tertiary.withOpacity(0.5)
-                        : null,
+                        ? colorScheme.tertiary
+                        : Colors.transparent,
                   ),
                 ),
                 child: Icon(
@@ -712,7 +710,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
               Icon(
                 Icons.article_outlined,
                 size: 48,
-                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                color: theme.colorScheme.onSurfaceVariant.withValues(alpha:0.5),
               ),
               const SizedBox(height: 12),
               Text(
@@ -738,7 +736,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
           owner: widget.owner,
           repo: widget.repo,
           defaultBranch: ref.read(repositoryProvider(_param)).maybeWhen(
-            data: (r) => r.defaultBranch,
+            data: (r) => r.defaultBranch ?? 'main',
             orElse: () => 'main',
           ),
         ),
@@ -764,7 +762,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
               Icon(
                 Icons.tag,
                 size: 48,
-                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                color: theme.colorScheme.onSurfaceVariant.withValues(alpha:0.5),
               ),
               const SizedBox(height: 12),
               Text(
@@ -795,7 +793,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
                     Icons.tag,
                     size: 48,
                     color:
-                        theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                        theme.colorScheme.onSurfaceVariant.withValues(alpha:0.5),
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -814,8 +812,8 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
         final filteredReleases = filter == 'all'
             ? releases
             : filter == 'stable'
-                ? releases.where((r) => !r.isPrerelease).toList()
-                : releases.where((r) => r.isPrerelease).toList();
+                ? releases.where((r) => !(r.isPrerelease)).toList()
+                : releases.where((r) => (r.isPrerelease)).toList();
 
         if (filteredReleases.isEmpty) {
           return Center(
@@ -828,7 +826,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
                     Icons.filter_list_off,
                     size: 48,
                     color:
-                        theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                        theme.colorScheme.onSurfaceVariant.withValues(alpha:0.5),
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -880,7 +878,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
                           border: Border.all(
                             color: isSelected
                                 ? colorScheme.primary
-                                : colorScheme.outlineVariant.withOpacity(0.5),
+                                : colorScheme.outlineVariant.withValues(alpha:0.5),
                           ),
                         ),
                         child: Row(
@@ -898,16 +896,16 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
                                 fontSize: 12,
                               ),
                             ),
-                            if (index == 0 && !release.isPrerelease) ...[
+                            if (index == 0 && !(release.isPrerelease)) ...[
                               const SizedBox(width: 6),
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 4, vertical: 1),
                                 decoration: BoxDecoration(
                                   color: isSelected
-                                      ? colorScheme.onPrimary.withOpacity(0.2)
+                                      ? colorScheme.onPrimary.withValues(alpha:0.2)
                                       : colorScheme
-                                          .tertiaryContainer.withOpacity(0.6),
+                                          .tertiaryContainer.withValues(alpha:0.6),
                                   borderRadius: BorderRadius.circular(3),
                                 ),
                                 child: Text(
@@ -949,7 +947,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
                     value: 'stable',
                     currentValue: filter,
                     count: releases
-                        .where((r) => !r.isPrerelease)
+                        .where((r) => !(r.isPrerelease))
                         .length,
                   ),
                   const SizedBox(width: 8),
@@ -959,7 +957,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
                     value: 'prerelease',
                     currentValue: filter,
                     count: releases
-                        .where((r) => r.isPrerelease)
+                        .where((r) => (r.isPrerelease))
                         .length,
                   ),
                 ],
@@ -1006,7 +1004,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
           border: Border.all(
             color: isSelected
                 ? theme.colorScheme.primary
-                : theme.colorScheme.outlineVariant.withOpacity(0.5),
+                : theme.colorScheme.outlineVariant.withValues(alpha:0.5),
           ),
         ),
         child: Text(
@@ -1086,7 +1084,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+                color: theme.colorScheme.outlineVariant.withValues(alpha:0.5),
               ),
             ),
             child: Column(
@@ -1333,7 +1331,7 @@ class _InfoDivider extends StatelessWidget {
         color: Theme.of(context)
             .colorScheme
             .outlineVariant
-            .withOpacity(0.5),
+            .withValues(alpha:0.5),
       ),
     );
   }

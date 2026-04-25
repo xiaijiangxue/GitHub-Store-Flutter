@@ -18,7 +18,7 @@ import 'core/translation/translation_service.dart';
 import 'core/updater/update_checker.dart';
 import 'features/deeplink/presentation/deeplink_handler.dart';
 import 'features/home/presentation/providers/home_provider.dart';
-import 'features/settings/presentation/providers/settings_provider.dart';
+import 'features/settings/data/settings_repository.dart';
 
 /// Entry point for the GitHub Store desktop application.
 ///
@@ -48,6 +48,7 @@ Future<void> main() async {
 
   // Initialize the database
   final database = AppDatabase();
+  await database.ready;
 
   // Initialize the cache manager with database backing
   final cacheManager = CacheManager(database: database);
@@ -152,12 +153,9 @@ Future<void> _initWindowManager() async {
     windowButtonVisibility: true,
   );
 
-  await windowManager.waitUntilReadyShown(windowOptions, () async {
-    await windowManager.show();
-    await windowManager.focus();
-
-    // Prevent window from being resized too small
-    windowManager.setPreventClose(true);
+  await windowManager.waitUntilReadyToShow(windowOptions, () {
+    windowManager.show();
+    windowManager.focus();
   });
 
   // Handle window close event (hide to tray instead of closing)
@@ -252,18 +250,18 @@ class _AppWindowListener extends WindowListener {
 Future<void> _initSystemTray(UpdateChecker updateChecker) async {
   final systemTray = SystemTray();
 
-  final menu = Menu(
-    items: [
+  final menu = Menu();
+  await menu.buildFrom([
       MenuItemLabel(
         label: 'Show',
-        onClick: () async {
+        onClicked: (_) async {
           await windowManager.show();
           await windowManager.focus();
         },
       ),
       MenuItemLabel(
         label: 'Check for Updates',
-        onClick: () async {
+        onClicked: (_) async {
           await windowManager.show();
           await windowManager.focus();
           updateChecker.checkForUpdate(force: true);
@@ -272,15 +270,14 @@ Future<void> _initSystemTray(UpdateChecker updateChecker) async {
       MenuSeparator(),
       MenuItemLabel(
         label: 'Quit',
-        onClick: () async {
+        onClicked: (_) async {
           // Perform cleanup before exiting
           await _cleanupBeforeExit();
           await systemTray.destroy();
           exit(0);
         },
       ),
-    ],
-  );
+    ]);
 
   // Determine icon path based on platform
   final iconPath = _getTrayIconPath();

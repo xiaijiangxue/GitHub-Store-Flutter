@@ -1,9 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/database/app_database.dart';
-import '../../../core/models/repository_model.dart';
-import '../../home/presentation/providers/home_provider.dart';
-import '../data/favorites_repository.dart';
+import '../../../../core/models/repository_model.dart';
+import '../../../home/presentation/providers/home_provider.dart';
+import '../../data/favorites_repository.dart';
 
 // ── Repository Provider ────────────────────────────────────────────────────
 
@@ -57,7 +56,7 @@ class FavoritesNotifier extends AsyncNotifier<List<RepositoryModel>> {
     ref.watch(favoritesSortModeProvider);
     ref.watch(favoritesSearchQueryProvider);
 
-    let rawFavorites = await repo.getAllFavorites();
+    var rawFavorites = await repo.getAllFavorites();
 
     // Apply search filter
     final query = ref.read(favoritesSearchQueryProvider).toLowerCase();

@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/platform/installer_service.dart';
-import '../../../core/platform/platform_service.dart';
+import '../../../../core/platform/installer_service.dart';
+import '../../../../core/platform/platform_service.dart';
 
 /// Provider for the platform [PlatformService] singleton.
 final platformServiceProvider = Provider<PlatformService>((ref) {

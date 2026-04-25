@@ -1,14 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/database/app_database.dart';
-import '../../../core/models/release_asset_model.dart';
-import '../../../core/models/release_model.dart';
-import '../../../core/models/repository_model.dart';
-import '../../../core/network/api_client.dart';
-import '../../../core/network/github_api.dart';
-import '../../../core/network/github_store_api.dart';
-import '../../home/presentation/providers/home_provider.dart';
-import '../data/details_repository.dart';
+import '../../../../core/models/release_asset_model.dart';
+import '../../../../core/models/release_model.dart';
+import '../../../../core/models/repository_model.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../../core/network/github_api.dart';
+import '../../../../core/network/github_store_api.dart';
+import '../../../home/presentation/providers/home_provider.dart';
+import '../../data/details_repository.dart';
 
 // ── Infrastructure Providers ──────────────────────────────────────────────
 
@@ -136,7 +135,7 @@ final releaseFilterProvider = StateProvider<String>((ref) => 'all');
 /// Whether the authenticated user has starred the repo.
 final starredProvider =
     StateNotifierProvider.family<StarredNotifier, bool, RepoParam>(
-  StarredNotifier.new,
+  (ref, param) => StarredNotifier(ref, param),
 );
 
 class StarredNotifier extends StateNotifier<bool> {
@@ -179,7 +178,7 @@ class StarredNotifier extends StateNotifier<bool> {
 /// Whether the repo is in the user's local favorites.
 final favoritedProvider =
     StateNotifierProvider.family<FavoritedNotifier, bool, RepoParam>(
-  FavoritedNotifier.new,
+  (ref, param) => FavoritedNotifier(ref, param),
 );
 
 class FavoritedNotifier extends StateNotifier<bool> {

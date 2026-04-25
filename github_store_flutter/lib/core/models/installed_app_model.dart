@@ -12,7 +12,6 @@ class InstalledAppModel {
     this.installedVersion,
     this.installedAssetUrl,
     this.latestVersion,
-    this.isUpdateAvailable = false,
     this.installTime,
     this.lastUpdateCheck,
     this.platform = ReleaseAssetPlatform.unknown,

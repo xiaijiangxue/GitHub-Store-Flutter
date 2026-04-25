@@ -1,16 +1,15 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/database/app_database.dart';
-import '../../../core/models/proxy_config_model.dart';
-import '../../../core/models/settings_model.dart';
-import '../../home/presentation/providers/home_provider.dart';
-import '../data/settings_repository.dart';
+import '../../../../core/database/app_database.dart';
+import '../../../../core/models/proxy_config_model.dart';
+import '../../../../core/models/settings_model.dart';
+import '../../../home/presentation/providers/home_provider.dart';
+import '../../data/settings_repository.dart';
 
 // Re-export shared infrastructure providers
-export '../../home/presentation/providers/home_provider.dart'
+export '../../../home/presentation/providers/home_provider.dart'
     show databaseProvider;
 
 // ── Infrastructure ──────────────────────────────────────────────────────────

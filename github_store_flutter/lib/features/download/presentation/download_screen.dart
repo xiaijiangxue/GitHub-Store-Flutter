@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/models/download_task_model.dart';
 import '../../../core/models/release_asset_model.dart';
@@ -471,7 +472,7 @@ class _DownloadScreenState extends ConsumerState<DownloadScreen> {
                     ),
                   ),
                   const Spacer(),
-                  if (task.canCancel)
+                  if (task.status.canCancel)
                     InkWell(
                       onTap: () {
                         ref
@@ -672,17 +673,14 @@ class _DownloadScreenState extends ConsumerState<DownloadScreen> {
   }
 
   void _navigateToInstaller(DownloadTaskModel task) {
-    context.pushNamed(
-      'installer',
-      pathParameters: {
-        'owner': task.repoOwner,
-        'repo': task.repoName,
-      },
+    final uri = Uri(
+      path: '/installer/${task.repoOwner}/${task.repoName}',
       queryParameters: {
         if (task.filePath != null) 'filePath': task.filePath,
         'assetName': task.asset.name,
       },
     );
+    context.push(uri.toString());
   }
 
   IconData _getPlatformIcon(String assetName) {

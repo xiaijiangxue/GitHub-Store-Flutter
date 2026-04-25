@@ -2,7 +2,8 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/models/download_task_model.dart';
+import '../../../../core/models/download_task_model.dart';
+import '../../../../core/models/release_asset_model.dart';
 import '../../data/download_manager.dart';
 import '../../data/download_repository.dart';
 
@@ -74,18 +75,15 @@ class DownloadNotifier extends StateNotifier<AsyncValue<void>> {
 
   /// Start a new download.
   Future<String> startDownload({
-    required String downloadUrl,
-    required String assetName,
+    required ReleaseAssetModel asset,
     required String owner,
     required String name,
-    required int assetId,
-    int fileSize = 0,
     String? version,
   }) async {
     state = const AsyncValue.loading();
     try {
       final path = await _repo.startDownload(
-        asset: _createAsset(downloadUrl, assetName, assetId, fileSize),
+        asset: asset,
         owner: owner,
         name: name,
         version: version,
@@ -137,12 +135,4 @@ class DownloadNotifier extends StateNotifier<AsyncValue<void>> {
     // History is updated via the repository; consumers watch
     // downloadHistoryProvider which pulls from the manager.
   }
-
-  /// Helper to create a ReleaseAssetModel from parameters.
-  /// Import is avoided by using the model directly from core.
-  // This is handled by passing the asset directly in most cases.
 }
-
-/// Create a minimal ReleaseAssetModel for download purposes.
-// Note: This uses a factory approach to avoid circular imports.
-// The caller should pass the full ReleaseAssetModel when available.

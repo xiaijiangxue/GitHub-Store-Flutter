@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
+import '../../../core/models/settings_model.dart';
+import '../../../core/models/proxy_config_model.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../home/presentation/providers/home_provider.dart';
 import '../data/settings_repository.dart';
@@ -411,7 +413,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       boxShadow: isSelected
                           ? [
                               BoxShadow(
-                                color: scheme.previewColor.withOpacity(0.4),
+                                color: scheme.previewColor.withValues(alpha: 0.4),
                                 blurRadius: 8,
                               ),
                             ]
@@ -677,7 +679,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           // Test connection button
                           SizedBox(
                             width: double.infinity,
-                            child: FilledButton.tonalIcon(
+                            child: FilledButton.icon(
                               onPressed: () =>
                                   _testProxyConnection(scope),
                               icon: const Icon(
@@ -827,7 +829,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 ? [
                                     BoxShadow(
                                       color:
-                                          scheme.previewColor.withOpacity(0.4),
+                                          scheme.previewColor.withValues(alpha: 0.4),
                                       blurRadius: 8,
                                     ),
                                   ]

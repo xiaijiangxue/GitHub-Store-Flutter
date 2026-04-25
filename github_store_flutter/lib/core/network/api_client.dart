@@ -1,13 +1,10 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../constants/api_constants.dart';
-
-part 'api_client.g.dart';
 
 /// Enum for supported API versions.
 enum ApiVersion {
@@ -45,12 +42,6 @@ class ApiException implements Exception {
 
 /// Type alias for the Dio HTTP client.
 typedef HttpClient = Dio;
-
-/// Provider for the API client singleton.
-@Riverpod(keepAlive: true)
-ApiClient apiClient(Ref ref) {
-  return ApiClient();
-}
 
 /// Core HTTP client wrapping Dio with interceptors, retry logic, and auth support.
 class ApiClient {
@@ -308,11 +299,20 @@ class ApiClient {
 
   Options _applyVersionHeaders(Options? options, ApiVersion version) {
     if (version == ApiVersion.graphql) {
-      return (options ?? Options()).copyWith(
-        headers: {
+      return Options(
+        headers: <String, dynamic>{
           'Content-Type': 'application/json',
           ...?options?.headers,
         },
+        contentType: options?.contentType,
+        responseType: options?.responseType,
+        sendTimeout: options?.sendTimeout,
+        receiveTimeout: options?.receiveTimeout,
+        extra: options?.extra,
+        validateStatus: options?.validateStatus,
+        receiveDataWhenStatusError: options?.receiveDataWhenStatusError,
+        followRedirects: options?.followRedirects,
+        maxRedirects: options?.maxRedirects,
       );
     }
     return options ?? Options();
@@ -320,8 +320,21 @@ class ApiClient {
 
   Options _applyBaseUrl(Options? options, String? customBaseUrl) {
     if (customBaseUrl == null) return options ?? Options();
-    return (options ?? Options()).copyWith(
-      extra: {'custom_base_url': customBaseUrl},
+    return Options(
+      method: options?.method,
+      headers: options?.headers,
+      contentType: options?.contentType,
+      responseType: options?.responseType,
+      sendTimeout: options?.sendTimeout,
+      receiveTimeout: options?.receiveTimeout,
+      extra: <String, dynamic>{
+        ...?options?.extra,
+        'custom_base_url': customBaseUrl,
+      },
+      validateStatus: options?.validateStatus,
+      receiveDataWhenStatusError: options?.receiveDataWhenStatusError,
+      followRedirects: options?.followRedirects,
+      maxRedirects: options?.maxRedirects,
     );
   }
 
@@ -461,7 +474,7 @@ class _RetryInterceptor extends Interceptor {
     final shouldRetry = _shouldRetry(err) && retryCount < _maxRetries;
 
     if (shouldRetry) {
-      final delay = _retryDelay * (1 << retryCount); // Exponential backoff
+      final delay = Duration(milliseconds: _retryDelay.inMilliseconds * (1 << retryCount)); // Exponential backoff
       debugPrint('[API] Retrying (${retryCount + 1}/$_maxRetries) after ${delay.inMilliseconds}ms');
 
       await Future.delayed(delay);
@@ -505,7 +518,6 @@ class _ErrorInterceptor extends Interceptor {
       type: err.type,
       error: apiException,
     ));
-    handler.next(err);
   }
 
   ApiException _convertError(DioException err) {

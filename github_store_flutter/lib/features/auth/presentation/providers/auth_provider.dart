@@ -3,14 +3,15 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/auth/auth_service.dart';
-import '../../../core/models/user_model.dart';
-import '../../../core/network/api_client.dart';
-import '../../home/presentation/providers/home_provider.dart';
-import '../data/auth_repository.dart';
+import '../../../../core/auth/auth_service.dart';
+import '../../../../core/models/user_model.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../home/presentation/providers/home_provider.dart';
+import '../../data/auth_repository.dart';
 
 // Re-export shared providers
-export '../../home/presentation/providers/home_provider.dart' show apiClientProvider;
+export '../../../home/presentation/providers/home_provider.dart'
+    show apiClientProvider;
 
 // ── Auth State ────────────────────────────────────────────────────────────
 

@@ -1,7 +1,5 @@
 import 'dart:convert';
 
-import 'package:drift/drift.dart';
-
 import '../../../core/database/app_database.dart';
 import '../../../core/models/owner_model.dart';
 import '../../../core/models/repository_model.dart';
@@ -21,8 +19,8 @@ class RecentlyViewedItem {
 
 /// Repository for managing recently viewed repositories in the local database.
 ///
-/// Recently viewed entries are stored in the [RecentlyViewed] table, and the
-/// corresponding repository metadata lives in the [Repositories] table.
+/// Recently viewed entries are stored in the [recently_viewed] table, and the
+/// corresponding repository metadata lives in the [repositories] table.
 class RecentlyViewedRepository {
   RecentlyViewedRepository({required AppDatabase database})
       : _database = database;
@@ -35,21 +33,18 @@ class RecentlyViewedRepository {
   ///
   /// [limit] — maximum number of entries to return (defaults to 50).
   ///
-  /// For each recently-viewed entry, we attempt to join with the Repositories
+  /// For each recently-viewed entry, we attempt to join with the repositories
   /// table to get full metadata. If the repo isn't cached, a minimal model
   /// is constructed from the entry data.
   Future<List<RecentlyViewedItem>> getAllRecentlyViewed({int limit = 50}) async {
-    final entries = await (select(_database.recentlyViewed)
-          ..orderBy([(t) => OrderingTerm.desc(t.viewedAt)])
-          ..limit(limit))
-        .get();
+    final entries = await _database.getRecentlyViewedSync(limit: limit);
 
     final List<RecentlyViewedItem> items = [];
 
     for (final entry in entries) {
       RepositoryModel repo;
 
-      // Try to get the full repository from the Repositories table
+      // Try to get the full repository from the repositories table
       if (entry.repositoryId != null) {
         final cached = await _database.getRepositoryById(entry.repositoryId!);
         if (cached != null) {
@@ -84,7 +79,7 @@ class RecentlyViewedRepository {
   ///
   /// If the repo was already viewed, the timestamp and view count are updated.
   /// If it's a new entry, it's inserted. Optionally also upserts minimal
-  /// repository metadata into the Repositories table.
+  /// repository metadata into the repositories table.
   ///
   /// [owner] — repository owner login.
   /// [name] — repository name.
@@ -128,9 +123,7 @@ class RecentlyViewedRepository {
   /// [name] — repository name.
   Future<void> removeRecentlyViewed(String owner, String name) async {
     final fullName = '$owner/$name';
-    await (_database.delete(_database.recentlyViewed)
-          ..where((t) => t.repoFullName.equals(fullName)))
-        .go();
+    await _database.removeRecentlyViewed(fullName);
   }
 
   /// Clear all recently viewed history.
@@ -140,7 +133,7 @@ class RecentlyViewedRepository {
 
   // ── Private Helpers ─────────────────────────────────────────────────────
 
-  /// Find the repository ID from the Repositories table by full name.
+  /// Find the repository ID from the repositories table by full name.
   Future<int?> _findRepoId(String fullName) async {
     final cached = await _database.getRepositoryByFullName(fullName);
     return cached?.id;
@@ -159,17 +152,17 @@ class RecentlyViewedRepository {
     final id = fullName.hashCode.abs();
 
     await _database.upsertRepository(
-      RepositoriesCompanion(
-        id: Value(id),
-        fullName: Value(fullName),
-        owner: Value(owner),
-        name: Value(name),
-        description: Value(description),
-        avatarUrl: Value(avatarUrl),
-        language: Value(language),
-        stargazersCount: Value(stars),
-        htmlUrl: Value('https://github.com/$fullName'),
-        cachedAt: Value(DateTime.now()),
+      DbRepository(
+        id: id,
+        fullName: fullName,
+        owner: owner,
+        name: name,
+        description: description,
+        htmlUrl: 'https://github.com/$fullName',
+        avatarUrl: avatarUrl,
+        language: language,
+        stargazersCount: stars,
+        cachedAt: DateTime.now(),
       ),
     );
 
@@ -177,7 +170,7 @@ class RecentlyViewedRepository {
   }
 
   /// Create a minimal [RepositoryModel] from a recently-viewed entry.
-  RepositoryModel _entryToMinimalModel(RecentlyViewedEntry entry) {
+  RepositoryModel _entryToMinimalModel(DbRecentlyViewedEntry entry) {
     final parts = entry.repoFullName.split('/');
     final owner = parts.length >= 2 ? parts[0] : '';
     final name = parts.length >= 2 ? parts.sublist(1).join('/') : entry.repoFullName;
@@ -190,8 +183,8 @@ class RecentlyViewedRepository {
     );
   }
 
-  /// Convert a database [Repository] row to a domain [RepositoryModel].
-  RepositoryModel _rowToModel(Repository row) {
+  /// Convert a database [DbRepository] row to a domain [RepositoryModel].
+  RepositoryModel _rowToModel(DbRepository row) {
     return RepositoryModel(
       id: row.id,
       name: row.name,
@@ -231,8 +224,8 @@ class RecentlyViewedRepository {
   }
 
   /// Parse the JSON-encoded topics string into a list.
-  List<String> _parseTopics(String? topicsJson) {
-    if (topicsJson == null || topicsJson.isEmpty) return const [];
+  List<String> _parseTopics(String topicsJson) {
+    if (topicsJson.isEmpty) return const [];
     if (topicsJson == '[]') return const [];
     try {
       final decoded = jsonDecode(topicsJson) as List;

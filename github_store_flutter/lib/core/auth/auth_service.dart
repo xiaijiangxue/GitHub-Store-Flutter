@@ -3,9 +3,11 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../constants/api_constants.dart';
 import '../network/api_client.dart';
@@ -98,6 +100,19 @@ class AuthService {
 
   // ── Device Flow ─────────────────────────────────────────────────────────
 
+  /// Open the verification URL in the system browser.
+  ///
+  /// Returns `true` if the URL was successfully launched, `false` otherwise.
+  Future<bool> launchVerificationUrl(String verificationUri) async {
+    try {
+      final uri = Uri.parse(verificationUri);
+      return await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('[AuthService] Failed to launch verification URL: $e');
+      return false;
+    }
+  }
+
   /// Start the GitHub OAuth Device Flow.
   ///
   /// Returns a [DeviceFlowResult] containing the device code, user code,
@@ -114,7 +129,7 @@ class AuthService {
           'client_id': ApiConstants.clientId,
           'scope': 'read:user,repo,notifications',
         },
-        options: const _FormUrlEncodedOptions(),
+        options: _FormUrlEncodedOptions(),
       );
 
       final data = response.data;
@@ -199,7 +214,7 @@ class AuthService {
             'device_code': deviceCode,
             'grant_type': 'urn:ietf:params:oauth:grant-type:device_code',
           },
-          options: const _FormUrlEncodedOptions(),
+          options: _FormUrlEncodedOptions(),
         );
 
         final data = response.data;
@@ -487,7 +502,7 @@ class AuthService {
 ///
 /// GitHub's OAuth endpoints require application/x-www-form-urlencoded.
 class _FormUrlEncodedOptions extends Options {
-  const _FormUrlEncodedOptions()
+  _FormUrlEncodedOptions()
       : super(
           contentType: 'application/x-www-form-urlencoded',
           headers: {

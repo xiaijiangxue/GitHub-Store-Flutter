@@ -75,7 +75,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 .toList(),
           ),
         ],
-        bottom: _buildTypeChips(theme),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: _buildTypeChips(theme),
+        ),
       ),
       body: _query.isEmpty
           ? _buildEmptyState(theme)
@@ -138,7 +141,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           Icon(
             Icons.search,
             size: 80,
-            color: theme.colorScheme.outline.withOpacity(0.4),
+            color: theme.colorScheme.outline.withValues(alpha: 0.4),
           ),
           const SizedBox(height: 16),
           Text(

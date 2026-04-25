@@ -1,6 +1,8 @@
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
 
 /// A frosted glass bottom navigation bar with spring animations on item
 /// selection, active indicator animations, and optional badge support.
@@ -65,7 +67,7 @@ class _AnimatedBottomNavState extends State<AnimatedBottomNav>
   late final List<Animation<double>> _scaleAnimations;
   late final AnimationController _indicatorController;
   late final Animation<double> _indicatorAnimation;
-  late final AnimationController _badgeControllers;
+  late final AnimationController _badgeController;
   late final Animation<double> _badgeAnimation;
 
   int _previousIndex = 0;
@@ -90,7 +92,7 @@ class _AnimatedBottomNavState extends State<AnimatedBottomNav>
       return CurvedAnimation(
         parent: controller,
         curve: Curves.elasticOut,
-      ).animate(Tween<double>(begin: 0.6, end: 1.0));
+      ).drive(Tween<double>(begin: 0.6, end: 1.0));
     }).toList();
 
     // Initialize current item as fully visible
@@ -109,17 +111,17 @@ class _AnimatedBottomNavState extends State<AnimatedBottomNav>
     );
 
     // Badge pop animation
-    _badgeControllers = AnimationController(
+    _badgeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
       lowerBound: 0,
       upperBound: 1,
     );
     _badgeAnimation = CurvedAnimation(
-      parent: _badgeControllers,
+      parent: _badgeController,
       curve: Curves.elasticOut,
     );
-    _badgeControllers.value = 1.0;
+    _badgeController.value = 1.0;
   }
 
   @override
@@ -146,7 +148,7 @@ class _AnimatedBottomNavState extends State<AnimatedBottomNav>
         return CurvedAnimation(
           parent: controller,
           curve: Curves.elasticOut,
-        ).animate(Tween<double>(begin: 0.6, end: 1.0));
+        ).drive(Tween<double>(begin: 0.6, end: 1.0));
       }).toList();
       _scaleControllers[widget.currentIndex].value = 1.0;
     }
@@ -158,7 +160,7 @@ class _AnimatedBottomNavState extends State<AnimatedBottomNav>
       controller.dispose();
     }
     _indicatorController.dispose();
-    _badgeControllers.dispose();
+    _badgeController.dispose();
     super.dispose();
   }
 
@@ -178,7 +180,7 @@ class _AnimatedBottomNavState extends State<AnimatedBottomNav>
     _indicatorController.forward(from: 0);
 
     // Pop badge animation
-    _badgeControllers.forward(from: 0);
+    _badgeController.forward(from: 0);
 
     _previousIndex = toIndex;
   }
@@ -204,10 +206,10 @@ class _AnimatedBottomNavState extends State<AnimatedBottomNav>
     return Container(
       height: widget.height,
       decoration: BoxDecoration(
-        color: bgColor.withOpacity(widget.frostOpacity),
+        color: bgColor.withValues(alpha: widget.frostOpacity),
         border: Border(
           top: BorderSide(
-            color: theme.dividerColor.withOpacity(0.3),
+            color: theme.dividerColor.withValues(alpha: 0.3),
             width: 0.5,
           ),
         ),
@@ -222,7 +224,7 @@ class _AnimatedBottomNavState extends State<AnimatedBottomNav>
           topRight: Radius.circular(widget.cornerRadius),
         ),
         child: BackdropFilter(
-          filter: _GlassBlurFilter(sigmaX: widget.blurSigma, sigmaY: widget.blurSigma),
+          filter: ImageFilter.blur(sigmaX: widget.blurSigma, sigmaY: widget.blurSigma),
           child: Stack(
             children: [
               // Animated active indicator
@@ -270,7 +272,7 @@ class _AnimatedBottomNavState extends State<AnimatedBottomNav>
           borderRadius: BorderRadius.circular(2),
           boxShadow: [
             BoxShadow(
-              color: theme.colorScheme.primary.withOpacity(0.3),
+              color: theme.colorScheme.primary.withValues(alpha: 0.3),
               blurRadius: 8,
               spreadRadius: 1,
             ),
@@ -371,7 +373,7 @@ class _AnimatedBottomNavState extends State<AnimatedBottomNav>
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: (badge.color ?? theme.colorScheme.error).withOpacity(0.4),
+            color: (badge.color ?? theme.colorScheme.error).withValues(alpha: 0.4),
             blurRadius: 4,
           ),
         ],
@@ -437,27 +439,4 @@ class DotBadge extends AnimatedNavBadge {
   const DotBadge({super.color});
 }
 
-/// A blur image filter for the frosted glass effect.
-class _GlassBlurFilter extends ImageFilter {
-  const _GlassBlurFilter({required this.sigmaX, required this.sigmaY});
 
-  final double sigmaX;
-  final double sigmaY;
-
-  @override
-  BitmapFilter createBitmapFilter() {
-    return _NativeBlurFilter(sigmaX, sigmaY);
-  }
-}
-
-/// Native blur filter implementation.
-class _NativeBlurFilter implements BitmapFilter {
-  _NativeBlurFilter(this.sigmaX, this.sigmaY);
-  final double sigmaX;
-  final double sigmaY;
-}
-
-/// Import for math functions needed by SpringSimulation.
-double _doubleLerp(double a, double b, double t) {
-  return a + (b - a) * t;
-}

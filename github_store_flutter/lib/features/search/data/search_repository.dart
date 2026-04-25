@@ -147,7 +147,7 @@ class SearchRepository {
   ///
   /// Returns the most recent 20 search queries, ordered by most recent first.
   Future<List<String>> getSearchHistory() async {
-    final entries = await _database.watchSearchHistory(limit: 20).first;
+    final entries = await _database.getSearchHistorySync(limit: 20);
     return entries.map((e) => e.query).toList();
   }
 

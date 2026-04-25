@@ -4,14 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/database/app_database.dart';
-import '../../../core/models/installed_app_model.dart';
-import '../../../core/network/github_store_api.dart';
-import '../../home/presentation/providers/home_provider.dart';
-import '../data/apps_repository.dart';
+import '../../../../core/database/app_database.dart';
+import '../../../../core/models/installed_app_model.dart';
+import '../../../../core/network/github_store_api.dart';
+import '../../../home/presentation/providers/home_provider.dart';
+import '../../data/apps_repository.dart';
 
 // Re-export shared providers
-export '../../home/presentation/providers/home_provider.dart'
+export '../../../home/presentation/providers/home_provider.dart'
     show databaseProvider, cacheManagerProvider, githubStoreApiProvider;
 
 // ── Infrastructure Providers ──────────────────────────────────────────────
@@ -48,7 +48,7 @@ final sortModeProvider = StateProvider<AppsSortMode>((ref) {
 });
 
 /// Search query for filtering apps.
-final searchQueryProvider = StateProvider<String>((ref) {
+final appsSearchQueryProvider = StateProvider<String>((ref) {
   return '';
 });
 

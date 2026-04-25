@@ -1,7 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../home/presentation/providers/home_provider.dart';
-import '../data/recently_viewed_repository.dart';
+import '../../../home/presentation/providers/home_provider.dart';
+import '../../data/recently_viewed_repository.dart';
+
+// Re-export RecentlyViewedItem for convenience in the screen.
+export '../../data/recently_viewed_repository.dart' show RecentlyViewedItem;
 
 // ── Repository Provider ────────────────────────────────────────────────────
 
@@ -50,6 +53,3 @@ class RecentlyViewedNotifier
     ref.invalidateSelf();
   }
 }
-
-/// Re-export [RecentlyViewedItem] for convenience in the screen.
-export '../../data/recently_viewed_repository.dart' show RecentlyViewedItem;

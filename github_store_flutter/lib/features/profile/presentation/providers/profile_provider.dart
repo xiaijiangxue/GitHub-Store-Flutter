@@ -35,10 +35,7 @@ final profileStatsProvider =
   final results = await Future.wait([
     // Downloaded count: distinct completed downloads
     (() async {
-      final downloads =
-          await (db.select(db.downloads)
-                ..where((t) => t.status.equals('completed')))
-              .get();
+      final downloads = await db.getDownloads(statusFilter: 'completed');
       return downloads
           .map((d) => d.repoFullName)
           .toSet()
@@ -47,10 +44,7 @@ final profileStatsProvider =
 
     // Installed count: completed installations (not uninstalled)
     (() async {
-      final installations =
-          await (db.select(db.installations)
-                ..where((t) => t.status.equals('completed')))
-              .get();
+      final installations = await db.getInstallations(activeOnly: false);
       return installations
           .map((i) => i.repoFullName)
           .toSet()
@@ -59,15 +53,13 @@ final profileStatsProvider =
 
     // Viewed count: total recently viewed entries
     (() async {
-      final viewed = await db.select(db.recentlyViewed).get();
+      final viewed = await db.getRecentlyViewedSync();
       return viewed.length;
     })(),
 
     // Favorites count: repos marked as favorite
     (() async {
-      final repos = await (db.select(db.repositories)
-            ..where((t) => t.isFavorite.equals(true)))
-          .get();
+      final repos = await db.getFavorites();
       return repos.length;
     })(),
   ]);

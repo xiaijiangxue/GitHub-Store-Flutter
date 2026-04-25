@@ -1,5 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -53,8 +56,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final Map<String, TextEditingController> _passwordControllers = {};
   final Set<String> _expandedProxySections = {};
 
+  // Youdao credential controllers (proper lifecycle)
+  late TextEditingController _youdaoAppKeyController;
+
+  @override
+  void initState() {
+    super.initState();
+    _youdaoAppKeyController = TextEditingController();
+  }
+
   @override
   void dispose() {
+    _youdaoAppKeyController.dispose();
     for (final c in _hostControllers.values) {
       c.dispose();
     }
@@ -215,9 +228,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                     child: TextField(
-                      controller: TextEditingController(
-                        text: settings.youdaoAppKey ?? '',
-                      ),
+                      controller: _youdaoAppKeyController
+                        ..text = settings.youdaoAppKey ?? '',
                       decoration: const InputDecoration(
                         labelText: 'Youdao App Key',
                         hintText: 'Enter your app key',
@@ -701,6 +713,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _testProxyConnection(ProxyScope scope) async {
+    final settings = ref.read(settingsProvider);
+    final config = settings.getProxyForScope(scope);
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Testing proxy connection...'),
@@ -708,18 +723,88 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ),
     );
 
-    // Simulate a test delay then report success.
-    await Future.delayed(const Duration(seconds: 1));
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Connection successful!'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
+    try {
+      final dio = await _buildDioWithProxy(config);
+      final response = await dio.get<dynamic>(
+        'https://api.github.com',
+        options: Options(
+          receiveTimeout: const Duration(seconds: 10),
+          sendTimeout: const Duration(seconds: 10),
         ),
       );
+
+      if (mounted) {
+        if (response.statusCode == 200) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Connection successful!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Server returned status ${response.statusCode}'),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Connection failed: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
+  }
+
+  Future<Dio> _buildDioWithProxy(ProxyConfigModel? config) async {
+    final dio = Dio();
+
+    if (config != null &&
+        config.isConfigured &&
+        config.type.requiresConfiguration) {
+      final host = config.host ?? '';
+      final port = config.port ?? 8080;
+      final username = config.username;
+      final password = config.password;
+
+      String proxyUrl;
+      if (username != null && username.isNotEmpty) {
+        proxyUrl =
+            '${config.type.name}://$username:$password@$host:$port';
+      } else {
+        proxyUrl = '${config.type.name}://$host:$port';
+      }
+
+      dio.httpClientAdapter = IOHttpClientAdapter(
+        createHttpClient: () {
+          final client = HttpClient();
+          client.findProxy = (uri) => 'PROXY $host:$port';
+          // Add auth headers for proxy if needed
+          if (username != null && username.isNotEmpty) {
+            final credentials =
+                base64Encode(utf8.encode('$username:$password'));
+            client.addProxyCredentials(
+              '',
+              port,
+              'proxy',
+              HttpClientBasicCredentials(username, password ?? ''),
+            );
+          }
+          return client;
+        },
+      );
+    }
+
+    return dio;
   }
 
   // ── Pickers ──────────────────────────────────────────────────────────────

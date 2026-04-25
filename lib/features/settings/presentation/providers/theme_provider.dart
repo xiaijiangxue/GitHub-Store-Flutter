@@ -71,12 +71,16 @@ final gridViewModeProvider = StateProvider<bool>((ref) {
   return true;
 });
 
-/// Provider for the GitHub auth token.
-final authTokenProvider = StateProvider<String?>((ref) {
+/// Provider for the GitHub auth token (legacy).
+///
+/// **Note:** New code should use [authTokenProvider] from
+/// `auth_provider.dart` instead. This is kept for backward compatibility
+/// and renamed to avoid a naming collision.
+final legacyAuthTokenProvider = StateProvider<String?>((ref) {
   return null;
 });
 
 /// Derived provider: is the user authenticated?
 final isAuthenticatedProvider = Provider<bool>((ref) {
-  return ref.watch(authTokenProvider) != null;
+  return ref.watch(legacyAuthTokenProvider) != null;
 });

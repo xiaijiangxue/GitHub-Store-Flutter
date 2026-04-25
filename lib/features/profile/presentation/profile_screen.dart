@@ -50,7 +50,7 @@ class ProfileScreen extends ConsumerWidget {
                   else
                     _GuestHeader(
                       theme: theme,
-                      onSignIn: () => context.go('/profile/auth'),
+                      onSignIn: () => context.go('/auth'),
                     ),
 
                   const SizedBox(height: 28),
@@ -89,7 +89,7 @@ class ProfileScreen extends ConsumerWidget {
                     icon: Icons.download_outlined,
                     title: 'Downloads',
                     subtitle: '${stats.downloadedCount} downloads',
-                    onTap: () => context.go('/download/_placeholder'),
+                    onTap: () => context.push(AppRoute.search.path),
                   ),
                   _ProfileMenuItem(
                     icon: Icons.settings_outlined,

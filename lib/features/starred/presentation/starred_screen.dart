@@ -99,7 +99,7 @@ class _StarredScreenState extends ConsumerState<StarredScreen> {
   }
 
   void _navigateToProfile() {
-    context.push(AppRoute.profile.path);
+    context.go(AppRoute.profile.path);
   }
 
   @override

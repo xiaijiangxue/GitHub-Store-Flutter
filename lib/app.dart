@@ -324,7 +324,10 @@ class _GitHubStoreAppState extends ConsumerState<GitHubStoreApp>
     }
 
     // Determine locale from settings
-    final locale = _resolveLocale(settings.languageCode);
+    final platformLocale = _resolveLocale(settings.languageCode);
+    final effectiveLocale = settings.languageCode.isNotEmpty
+        ? platformLocale
+        : null;
 
     return MaterialApp.router(
       key: const ValueKey('GitHubStore'),
@@ -339,7 +342,7 @@ class _GitHubStoreAppState extends ConsumerState<GitHubStoreApp>
       themeMode: themeMode,
 
       // Localization
-      locale: locale,
+      locale: effectiveLocale,
       supportedLocales: _supportedLocales,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,

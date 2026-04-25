@@ -17,6 +17,7 @@ class RepoSection extends ConsumerWidget {
     this.icon,
     this.subtitle,
     this.onSeeAll,
+    this.onRetry,
     this.maxItems = 6,
     this.errorMessage,
     super.key,
@@ -36,6 +37,9 @@ class RepoSection extends ConsumerWidget {
 
   /// Callback when "See All" is tapped.
   final VoidCallback? onSeeAll;
+
+  /// Callback when "Retry" is tapped after an error.
+  final VoidCallback? onRetry;
 
   /// Maximum number of items to display.
   final int maxItems;
@@ -249,9 +253,7 @@ class RepoSection extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             FilledButton.tonal(
-              onPressed: () {
-                // Retry by invalidating
-              },
+              onPressed: onRetry,
               child: const Text('Retry'),
             ),
           ],

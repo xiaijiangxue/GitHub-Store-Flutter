@@ -560,10 +560,9 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
           final topic = topics[index];
           return GestureDetector(
             onTap: () {
-              // Could navigate to a topic search screen
+              // Navigate to search with topic query parameter
               context.push(
-                AppRoute.search.path,
-                extra: {'q': 'topic:$topic'},
+                '${AppRoute.search.path}?q=topic:$topic',
               );
             },
             child: Container(

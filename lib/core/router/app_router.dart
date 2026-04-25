@@ -14,6 +14,7 @@ import '../../features/recently_viewed/presentation/recently_viewed_screen.dart'
 import '../../features/search/presentation/search_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/starred/presentation/starred_screen.dart';
+import '../../features/auth/presentation/auth_screen.dart';
 
 /// Enum for all named routes in the app.
 enum AppRoute {
@@ -29,6 +30,7 @@ enum AppRoute {
   devProfile,
   profile,
   settings,
+  auth,
 }
 
 /// Provider for the GoRouter instance.
@@ -169,6 +171,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: AppRoute.settings.name,
         builder: (context, state) => const SettingsScreen(),
       ),
+      GoRoute(
+        path: AppRoute.auth.path,
+        name: AppRoute.auth.name,
+        builder: (context, state) => const AuthScreen(),
+      ),
     ],
   );
 });
@@ -189,6 +196,7 @@ extension AppRoutePath on AppRoute {
         AppRoute.devProfile => '/dev/:username',
         AppRoute.profile => '/profile',
         AppRoute.settings => '/settings',
+        AppRoute.auth => '/auth',
       };
 
   /// Build a path with parameters.

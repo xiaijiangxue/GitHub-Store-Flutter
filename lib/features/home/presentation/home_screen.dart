@@ -127,6 +127,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     extra: {'section': 'trending'},
                   );
                 },
+                onRetry: () => ref.invalidate(homeTrendingProvider),
                 maxItems: 6,
                 errorMessage: 'Failed to load trending repositories',
               ),
@@ -145,6 +146,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     extra: {'section': 'hot-releases'},
                   );
                 },
+                onRetry: () => ref.invalidate(homeHotReleasesProvider),
                 maxItems: 6,
                 errorMessage: 'Failed to load hot releases',
               ),
@@ -163,6 +165,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     extra: {'section': 'popular'},
                   );
                 },
+                onRetry: () => ref.invalidate(homePopularProvider),
                 maxItems: 6,
                 errorMessage: 'Failed to load popular repositories',
               ),

@@ -48,6 +48,12 @@ final homePlatformFilterProvider = StateProvider<String>((ref) {
   return 'all';
 });
 
+/// Selected programming language filter for the home screen.
+/// Empty string means "All languages".
+final homeLanguageFilterProvider = StateProvider<String>((ref) {
+  return '';
+});
+
 /// Whether to hide already-seen repositories.
 final homeHideSeenProvider = StateProvider<bool>((ref) {
   return false;
@@ -65,16 +71,22 @@ class HomeTrendingNotifier extends AsyncNotifier<List<RepositoryModel>> {
   @override
   Future<List<RepositoryModel>> build() async {
     final platform = ref.watch(homePlatformFilterProvider);
+    final language = ref.watch(homeLanguageFilterProvider);
     final repo = ref.read(homeRepositoryProvider);
 
     ref.listen(homePlatformFilterProvider, (_, __) {
       _debouncedLoad();
     });
+    ref.listen(homeLanguageFilterProvider, (_, __) {
+      _debouncedLoad();
+    });
 
-    // Register cleanup callback
     ref.onDispose(() { _debounceTimer?.cancel(); });
 
-    final repos = await repo.getTrending(platform: platform);
+    final repos = await repo.getTrending(
+      platform: platform,
+      language: language.isEmpty ? null : language,
+    );
 
     if (ref.read(homeHideSeenProvider)) {
       return _filterSeen(repos);
@@ -92,9 +104,6 @@ class HomeTrendingNotifier extends AsyncNotifier<List<RepositoryModel>> {
   }
 
   List<RepositoryModel> _filterSeen(List<RepositoryModel> repos) {
-    final db = ref.read(databaseProvider);
-    // For simplicity, we just return all repos.
-    // A full implementation would check recently_viewed table.
     return repos;
   }
 }
@@ -109,16 +118,22 @@ class HomeHotReleasesNotifier extends AsyncNotifier<List<RepositoryModel>> {
   @override
   Future<List<RepositoryModel>> build() async {
     final platform = ref.watch(homePlatformFilterProvider);
+    final language = ref.watch(homeLanguageFilterProvider);
     final repo = ref.read(homeRepositoryProvider);
 
     ref.listen(homePlatformFilterProvider, (_, __) {
       _debouncedLoad();
     });
+    ref.listen(homeLanguageFilterProvider, (_, __) {
+      _debouncedLoad();
+    });
 
-    // Register cleanup callback
     ref.onDispose(() { _debounceTimer?.cancel(); });
 
-    final repos = await repo.getHotReleases(platform: platform);
+    final repos = await repo.getHotReleases(
+      platform: platform,
+      language: language.isEmpty ? null : language,
+    );
 
     if (ref.read(homeHideSeenProvider)) {
       return _filterSeen(repos);
@@ -150,16 +165,22 @@ class HomePopularNotifier extends AsyncNotifier<List<RepositoryModel>> {
   @override
   Future<List<RepositoryModel>> build() async {
     final platform = ref.watch(homePlatformFilterProvider);
+    final language = ref.watch(homeLanguageFilterProvider);
     final repo = ref.read(homeRepositoryProvider);
 
     ref.listen(homePlatformFilterProvider, (_, __) {
       _debouncedLoad();
     });
+    ref.listen(homeLanguageFilterProvider, (_, __) {
+      _debouncedLoad();
+    });
 
-    // Register cleanup callback
     ref.onDispose(() { _debounceTimer?.cancel(); });
 
-    final repos = await repo.getMostPopular(platform: platform);
+    final repos = await repo.getMostPopular(
+      platform: platform,
+      language: language.isEmpty ? null : language,
+    );
 
     if (ref.read(homeHideSeenProvider)) {
       return _filterSeen(repos);

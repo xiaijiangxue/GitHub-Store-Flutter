@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_router.dart';
 import '../presentation/providers/home_provider.dart';
+import '../presentation/widgets/language_filter_bar.dart';
 import '../presentation/widgets/platform_filter_bar.dart';
 import '../presentation/widgets/trending_section.dart';
 
@@ -100,6 +101,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             // ── Platform Filter Bar ─────────────────────────────────────
             const SliverToBoxAdapter(
               child: PlatformFilterBar(),
+            ),
+
+            // ── Language Filter Bar ──────────────────────────────────────
+            const SliverToBoxAdapter(
+              child: LanguageFilterBar(),
             ),
 
             // ── Category Chips Row ──────────────────────────────────────

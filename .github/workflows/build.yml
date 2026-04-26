@@ -80,12 +80,95 @@ jobs:
             --release \
             --tree-shake-icons
 
-      - name: Package macOS
+      - name: Build macOS (Release)
         run: |
+          flutter build macos --release --tree-shake-icons
+
+      - name: Optimize & Package macOS ARM64
+        run: |
+          APP_PATH="build/macos/Build/Products/Release/github_store_flutter.app"
+          FRAMEWORKS="$APP_PATH/Contents/Frameworks"
+
+          echo "=== Step 1: Strip debug symbols ==="
+          for framework in "$FRAMEWORKS"/*.framework; do
+            if [ -d "$framework" ]; then
+              BINARY_NAME="$(basename "$framework" .framework)"
+              for BINARY_PATH in "$framework/$BINARY_NAME" "$framework/Versions/A/$BINARY_NAME"; do
+                if [ -f "$BINARY_PATH" ]; then
+                  strip -x -S "$BINARY_PATH" 2>/dev/null || true
+                fi
+              done
+            fi
+          done
+          for dylib in "$FRAMEWORKS"/*.dylib; do
+            if [ -f "$dylib" ]; then
+              strip -x -S "$dylib" 2>/dev/null || true
+            fi
+          done
+
+          echo "=== Step 2: Thin to ARM64 only ==="
+          for framework in "$FRAMEWORKS"/*.framework; do
+            if [ -d "$framework" ]; then
+              BINARY_NAME="$(basename "$framework" .framework)"
+              for BINARY_PATH in "$framework/Versions/A/$BINARY_NAME" "$framework/$BINARY_NAME"; do
+                if [ -f "$BINARY_PATH" ]; then
+                  ARCHS=$(lipo -info "$BINARY_PATH" 2>/dev/null || echo "single")
+                  if echo "$ARCHS" | grep -q "arm64.*x86_64\|x86_64.*arm64"; then
+                    lipo -thin arm64 -output "$BINARY_PATH" "$BINARY_PATH" 2>/dev/null || true
+                  fi
+                fi
+              done
+            fi
+          done
+          for dylib in "$FRAMEWORKS"/*.dylib; do
+            if [ -f "$dylib" ]; then
+              ARCHS=$(lipo -info "$dylib" 2>/dev/null || echo "single")
+              if echo "$ARCHS" | grep -q "arm64.*x86_64\|x86_64.*arm64"; then
+                lipo -thin arm64 -output "$dylib" "$dylib" 2>/dev/null || true
+              fi
+            fi
+          done
+
+          echo "=== Step 3: Remove system Swift dylibs ==="
+          rm -f "$FRAMEWORKS"/libswift*.dylib
+
+          echo "=== Step 4: Remove dSYM files ==="
+          find "$APP_PATH" -name "*.dSYM" -type d -exec rm -rf {} + 2>/dev/null || true
+
+          echo "=== Step 5: Re-sign after strip/lipo ==="
+          codesign --force --deep --sign - "$APP_PATH"
+
+          echo "=== Step 6: Rebuild framework symlinks ==="
+          for framework in "$FRAMEWORKS"/*.framework; do
+            if [ -d "$framework" ]; then
+              BINARY_NAME="$(basename "$framework" .framework)"
+              if [ -d "$framework/Versions" ]; then
+                rm -f "$framework/Versions/Current"
+                ln -s A "$framework/Versions/Current"
+                rm -f "$framework/$BINARY_NAME"
+                ln -s "Versions/Current/$BINARY_NAME" "$framework/$BINARY_NAME"
+                if [ -d "$framework/Versions/A/Resources" ]; then
+                  rm -f "$framework/Resources"
+                  ln -s "Versions/Current/Resources" "$framework/Resources"
+                fi
+              fi
+            fi
+          done
+
+          echo "=== Step 7: Package ==="
           mkdir -p package/github_store_flutter.app
-          cp -r build/macos/Build/Products/Release/github_store_flutter.app/* package/github_store_flutter.app/
+          cp -r "$APP_PATH"/* package/github_store_flutter.app/
           cd package
-          zip -r -9 ../GitHub-Store-Flutter-macOS.zip github_store_flutter.app/
+          zip -r -9 -y ../GitHub-Store-Flutter-macOS-ARM64.zip github_store_flutter.app/
+          cd ..
+
+          echo "macOS zip size: $(du -sh GitHub-Store-Flutter-macOS-ARM64.zip | cut -f1)"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-release
+          path: GitHub-Store-Flutter-macOS-ARM64.zip
           cd ..
 
       - name: Upload Artifact

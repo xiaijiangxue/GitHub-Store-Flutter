@@ -166,34 +166,6 @@ class _GitHubStoreAppState extends ConsumerState<GitHubStoreApp>
     // check that compares the current state with the last known state.
     SettingsModel? lastSettings;
 
-      if (!mounted) return;
-
-      final settings = ref.read(settingsProvider);
-
-      // Skip if settings haven't changed
-      if (settings == lastSettings) return;
-      lastSettings = settings;
-
-      // Sync analytics setting
-      if (settings.analyticsEnabled != widget.telemetryService.isEnabled) {
-        if (settings.analyticsEnabled) {
-          widget.telemetryService.enable();
-        } else {
-          widget.telemetryService.disable();
-        }
-      }
-
-      // Sync translation provider
-      widget.translationService.setDefaultProvider(settings.translationProvider);
-      if (settings.youdaoAppKey != null && settings.youdaoAppSecret != null) {
-        widget.translationService
-            .setYoudaoCredentials(settings.youdaoAppKey, settings.youdaoAppSecret);
-      }
-
-      // Sync update checker settings
-      widget.updateChecker.setCheckInterval(settings.updateCheckInterval);
-      widget.updateChecker.setIncludePrerelease(settings.includePrerelease);
-    });
   }
 
   // ── Update Checker ──────────────────────────────────────────────────────
@@ -224,6 +196,25 @@ class _GitHubStoreAppState extends ConsumerState<GitHubStoreApp>
 
   }
 
+    final settings = ref.read(settingsProvider);
+    if (!settings.clipboardDetectionEnabled || !mounted) return;
+
+    try {
+      final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+      final text = clipboardData?.text ?? '';
+
+      if (text.isNotEmpty && text != _lastClipboardText) {
+        _lastClipboardText = text;
+
+        // Check if the clipboard contains a GitHub URL
+        if (_isGitHubUrl(text)) {
+          _showClipboardDialog(text);
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('[Clipboard] Error checking clipboard: $e');
+    }
 
     // Check again after 3 seconds
     if (mounted) {

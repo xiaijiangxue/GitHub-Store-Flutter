@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import '../../auth/presentation/providers/auth_provider.dart';
 import 'providers/profile_provider.dart';
 
+import '../../../core/router/app_router.dart';
+
 /// User profile screen showing auth status, stats, and navigation menu.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});

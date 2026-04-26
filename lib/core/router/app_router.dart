@@ -30,7 +30,6 @@ enum AppRoute {
   devProfile,
   profile,
   settings,
-  auth,
 }
 
 /// Provider for the GoRouter instance.
@@ -172,8 +171,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const SettingsScreen(),
       ),
       GoRoute(
-        path: AppRoute.auth.path,
-        name: AppRoute.auth.name,
+        path: '/profile/auth',
+        name: 'auth',
         builder: (context, state) => const AuthScreen(),
       ),
     ],
@@ -196,7 +195,6 @@ extension AppRoutePath on AppRoute {
         AppRoute.devProfile => '/dev/:username',
         AppRoute.profile => '/profile',
         AppRoute.settings => '/settings',
-        AppRoute.auth => '/auth',
       };
 
   /// Build a path with parameters.

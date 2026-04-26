@@ -1,25 +1,2 @@
 #include "../../Flutter/Flutter-Release.xcconfig"
 #include "Warnings.xcconfig"
-
-// === 体积优化配置 ===
-// 启用 Link-Time Optimization (减少 ~10-15%)
-OTHER_LDFLAGS = $(inherited) -Wl,-S -Wl,-x -Wl,-dead_strip
-
-// Strip 调试符号
-STRIP_INSTALLED_PRODUCT = YES
-STRIP_SWIFT_SYMBOLS = YES
-STRIP_STYLE = non-global
-
-// 压缩 Swift 产物
-SWIFT_COMPILATION_MODE = wholemodule
-SWIFT_OPTIMIZATION_LEVEL = -O
-
-// 死代码消除
-DEAD_CODE_STRIPPING = YES
-
-// 精简 DWARF 调试信息
-DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
-COPY_PHASE_STRIP = NO
-
-// 不生成 dSYM（Release 不需要）
-DWARF_DSYM_FILE_SHOULD_ACCOMPANY_PRODUCT = NO

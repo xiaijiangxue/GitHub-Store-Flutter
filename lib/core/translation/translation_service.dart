@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -588,17 +589,9 @@ class TranslationService {
     return map[languageCode] ?? [languageCode];
   }
 
-  /// Simple MD5 hash for Youdao sign generation.
+  /// MD5 hash for Youdao sign generation.
   String _md5Hash(String input) {
-    // Use a simple hash since we may not have crypto imported here.
-    // In production, use the `crypto` package.
-    var hash = 0;
-    for (var i = 0; i < input.length; i++) {
-      final char = input.codeUnitAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & 0xFFFFFFFF; // Keep as 32-bit int
-    }
-    return hash.toRadixString(16).padLeft(8, '0');
+    return md5.convert(utf8.encode(input)).toString();
   }
 }
 

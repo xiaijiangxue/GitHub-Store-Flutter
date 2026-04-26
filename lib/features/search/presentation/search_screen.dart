@@ -4,9 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/models/repository_model.dart';
 import '../../../core/router/app_router.dart';
+import '../../../shared/widgets/repository_card.dart';
 import 'providers/search_provider.dart';
 
-/// Search screen with real GitHub Search API integration.
+/// Search screen with search input, filters, and results.
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key, this.initialQuery});
 
@@ -19,57 +20,57 @@ class SearchScreen extends ConsumerStatefulWidget {
 
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   late final TextEditingController _searchController;
-  late final ScrollController _scrollController;
-  bool _initialSearchDone = false;
+  String _query = '';
+  String _selectedLanguage = '';
+  String _selectedSort = 'best_match';
+
+  final _languages = [
+    'All Languages',
+    'Dart',
+    'TypeScript',
+    'JavaScript',
+    'Python',
+    'Rust',
+    'Go',
+    'Java',
+    'C++',
+    'C',
+    'Swift',
+    'Kotlin',
+    'Ruby',
+  ];
+
+  bool _hasSearched = false;
 
   @override
   void initState() {
     super.initState();
     _searchController = TextEditingController(text: widget.initialQuery ?? '');
-    _scrollController = ScrollController()..addListener(_onScroll);
-
-    // If we have an initial query from navigation, perform search immediately
+    _query = widget.initialQuery ?? '';
     if (widget.initialQuery != null && widget.initialQuery!.isNotEmpty) {
-      Future.microtask(() => _submitQuery(widget.initialQuery!));
+      // Auto-search when navigated with a query
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _performSearch(widget.initialQuery!.trim());
+      });
     }
   }
 
   @override
   void dispose() {
     _searchController.dispose();
-    _scrollController.dispose();
     super.dispose();
-  }
-
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200) {
-      _loadMore();
-    }
-  }
-
-  void _submitQuery(String query) {
-    if (query.trim().isEmpty) return;
-    ref.read(searchQueryProvider.notifier).state = query.trim();
-  }
-
-  void _loadMore() {
-    if (ref.read(searchHasMoreProvider) && !ref.read(searchLoadingMoreProvider)) {
-      ref.read(searchResultsNotifierProvider.notifier).loadNextPage();
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isSearching = ref.watch(searchIsSearchingProvider);
-    final items = ref.watch(searchResultsItemsProvider);
+    final searchResults = ref.watch(searchResultsNotifierProvider);
+    final resultItems = ref.watch(searchResultsItemsProvider);
     final totalCount = ref.watch(searchTotalCountProvider);
     final hasMore = ref.watch(searchHasMoreProvider);
-    final loadingMore = ref.watch(searchLoadingMoreProvider);
-    final error = ref.watch(searchErrorProvider);
-    final query = ref.watch(searchQueryProvider);
-    final selectedLanguage = ref.watch(searchLanguageFilterProvider);
+    final isLoadingMore = ref.watch(searchLoadingMoreProvider);
+    final searchError = ref.watch(searchErrorProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -77,102 +78,89 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.tune),
-            tooltip: 'Language Filter',
+            tooltip: 'Filters',
             onSelected: (value) {
+              setState(() {
+                _selectedLanguage = value == 'All Languages' ? '' : value;
+              });
+              // Re-search with new language filter
               ref.read(searchLanguageFilterProvider.notifier).state =
-                  value == 'All' ? '' : value;
-              // Re-trigger search with new filter
-              if (query.isNotEmpty) {
-                _submitQuery(query);
-              }
+                  _selectedLanguage;
             },
-            itemBuilder: (_) => [
-              'All', 'Dart', 'Python', 'JavaScript', 'TypeScript',
-              'Java', 'Kotlin', 'Go', 'Rust', 'C++', 'Swift', 'Ruby', 'PHP',
-            ]
+            itemBuilder: (_) => _languages
                 .map((lang) => PopupMenuItem(
                       value: lang,
                       child: Row(
                         children: [
-                          if (selectedLanguage == (lang == 'All' ? '' : lang))
-                            const Icon(Icons.check, size: 16)
-                          else
-                            const SizedBox(width: 16),
-                          const SizedBox(width: 8),
+                          if (_selectedLanguage == (lang == 'All Languages' ? '' : lang))
+                            const Icon(Icons.check, size: 16),
+                          if (_selectedLanguage == (lang == 'All Languages' ? '' : lang))
+                            const SizedBox(width: 8),
                           Text(lang),
                         ],
                       ),
                     ))
                 .toList(),
           ),
-          if (query.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.clear),
-              tooltip: 'Clear',
-              onPressed: () {
-                _searchController.clear();
-                ref.read(searchResultsNotifierProvider.notifier).clearSearch();
-              },
-            ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.sort),
+            tooltip: 'Sort',
+            onSelected: (value) {
+              setState(() => _selectedSort = value);
+              ref.read(searchSortProvider.notifier).state = value;
+            },
+            itemBuilder: (_) => searchSortOptions
+                .map((option) => PopupMenuItem(
+                      value: option.$2,
+                      child: Row(
+                        children: [
+                          if (_selectedSort == option.$2)
+                            const Icon(Icons.check, size: 16),
+                          if (_selectedSort == option.$2)
+                            const SizedBox(width: 8),
+                          Text(option.$1),
+                        ],
+                      ),
+                    ))
+                .toList(),
+          ),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(40),
-          child: _buildSortChips(theme),
-        ),
       ),
-      body: query.isEmpty
+      body: !_hasSearched
           ? _buildEmptyState(theme)
-          : isSearching
+          : isSearching && resultItems.isEmpty
               ? _buildLoadingState()
-              : error != null
-                  ? _buildErrorState(theme, error)
-                  : items.isEmpty
-                      ? _buildNoResults(theme)
-                      : _buildResultsList(theme, items, totalCount, hasMore, loadingMore),
+              : searchError != null && resultItems.isEmpty
+                  ? _buildErrorState(theme, searchError)
+                  : _buildResults(
+                      theme,
+                      resultItems,
+                      totalCount,
+                      isLoadingMore,
+                      hasMore,
+                    ),
     );
   }
 
   Widget _buildSearchField(ThemeData theme) {
-    return TextField(
-      controller: _searchController,
-      autofocus: widget.initialQuery == null,
-      style: theme.textTheme.bodyLarge,
-      decoration: InputDecoration(
-        hintText: 'Search GitHub...',
-        border: InputBorder.none,
-        enabledBorder: InputBorder.none,
-        focusedBorder: InputBorder.none,
-        hintStyle: theme.textTheme.bodyLarge?.copyWith(
-          color: theme.colorScheme.outline,
-        ),
-      ),
-      textInputAction: TextInputAction.search,
-      onSubmitted: _submitQuery,
-    );
-  }
-
-  Widget _buildSortChips(ThemeData theme) {
-    final currentSort = ref.watch(searchSortProvider);
     return SizedBox(
-      height: 40,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: searchSortOptions.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final (label, value) = searchSortOptions[index];
-          final isSelected = currentSort == value;
-          return ChoiceChip(
-            label: Text(label),
-            selected: isSelected,
-            onSelected: (_) {
-              ref.read(searchSortProvider.notifier).state = value;
-              final query = ref.read(searchQueryProvider);
-              if (query.isNotEmpty) _submitQuery(query);
-            },
-          );
-        },
+      width: 400,
+      child: TextField(
+        controller: _searchController,
+        autofocus: widget.initialQuery == null,
+        style: theme.textTheme.bodyLarge,
+        decoration: InputDecoration(
+          hintText: 'Search GitHub...',
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          hintStyle: theme.textTheme.bodyLarge?.copyWith(
+            color: theme.colorScheme.outline,
+          ),
+        ),
+        textInputAction: TextInputAction.search,
+        onSubmitted: _performSearch,
+        onChanged: (value) => _query = value,
       ),
     );
   }
@@ -185,7 +173,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           Icon(
             Icons.search,
             size: 80,
-            color: theme.colorScheme.outline.withOpacity(0.4),
+            color: theme.colorScheme.outline.withValues(alpha: 0.4),
           ),
           const SizedBox(height: 16),
           Text(
@@ -196,7 +184,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Find repositories, users, code, and more',
+            'Find repositories, users, and more',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.outline,
             ),
@@ -219,32 +207,32 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline,
-                size: 48, color: theme.colorScheme.error.withOpacity(0.7)),
+            Icon(
+              Icons.error_outline,
+              size: 48,
+              color: theme.colorScheme.error,
+            ),
             const SizedBox(height: 16),
             Text(
               'Search failed',
               style: theme.textTheme.titleMedium?.copyWith(
-                color: theme.colorScheme.error,
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               error,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.outline,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
               maxLines: 3,
-              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 16),
-            FilledButton.tonal(
-              onPressed: () {
-                final query = ref.read(searchQueryProvider);
-                if (query.isNotEmpty) _submitQuery(query);
-              },
-              child: const Text('Retry'),
+            FilledButton.icon(
+              onPressed: () => _performSearch(_query),
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('Retry'),
             ),
           ],
         ),
@@ -252,52 +240,85 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     );
   }
 
-  Widget _buildNoResults(ThemeData theme) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.search_off,
-              size: 48, color: theme.colorScheme.outline.withOpacity(0.4)),
-          const SizedBox(height: 16),
-          Text(
-            'No results found',
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: theme.colorScheme.outline,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Try different keywords or remove filters',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.outline,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildResultsList(
+  Widget _buildResults(
     ThemeData theme,
     List<RepositoryModel> items,
     int totalCount,
+    bool isLoadingMore,
     bool hasMore,
-    bool loadingMore,
   ) {
+    final _scrollController = ScrollController();
+
+    // Listen for scroll to bottom for pagination
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >=
+              _scrollController.position.maxScrollExtent - 200 &&
+          hasMore &&
+          !isLoadingMore) {
+        ref.read(searchResultsNotifierProvider.notifier).loadNextPage();
+      }
+    });
+
+    if (items.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.search_off,
+              size: 64,
+              color: theme.colorScheme.outline.withValues(alpha: 0.5),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No results found',
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Try different keywords or filters',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.outline,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Column(
       children: [
         // Result count
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: Row(
             children: [
               Text(
                 '$totalCount results',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.outline,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
+              if (_selectedLanguage.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _selectedLanguage,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -305,16 +326,43 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         Expanded(
           child: ListView.builder(
             controller: _scrollController,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: items.length + (loadingMore ? 1 : 0),
+            padding: const EdgeInsets.all(16),
+            itemCount: items.length + (isLoadingMore ? 1 : 0),
             itemBuilder: (context, index) {
-              if (index == items.length) {
+              if (index >= items.length) {
                 return const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Center(child: CircularProgressIndicator()),
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
                 );
               }
-              return _buildResultCard(theme, items[index]);
+
+              final repo = items[index];
+              return _SearchResultCard(
+                repo: repo,
+                onTap: () {
+                  final parts = repo.fullName.split('/');
+                  if (parts.length == 2) {
+                    context.push(
+                      AppRoute.details.withParams({
+                        'owner': parts[0],
+                        'repo': parts[1],
+                      }),
+                    );
+                  }
+                },
+                onOwnerTap: () {
+                  context.push(
+                    AppRoute.devProfile
+                        .withParams({'username': repo.ownerLogin}),
+                  );
+                },
+              );
             },
           ),
         ),
@@ -322,146 +370,179 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     );
   }
 
-  Widget _buildResultCard(ThemeData theme, RepositoryModel repo) {
-    final parts = repo.fullName.split('/');
-    final owner = parts.length >= 2 ? parts[0] : '';
-    final name = parts.length >= 2 ? parts[1] : repo.fullName;
+  void _performSearch(String query) {
+    if (query.trim().isEmpty) return;
+    setState(() {
+      _query = query.trim();
+      _hasSearched = true;
+    });
+
+    // Update providers and trigger search
+    ref.read(searchQueryProvider.notifier).state = query.trim();
+    ref.read(searchLanguageFilterProvider.notifier).state = _selectedLanguage;
+    ref.read(searchSortProvider.notifier).state = _selectedSort;
+  }
+}
+
+/// Search result card displaying a repository.
+class _SearchResultCard extends StatelessWidget {
+  const _SearchResultCard({
+    required this.repo,
+    required this.onTap,
+    required this.onOwnerTap,
+  });
+
+  final RepositoryModel repo;
+  final VoidCallback onTap;
+  final VoidCallback onOwnerTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () {
-          if (parts.length == 2) {
-            context.push(
-              AppRoute.details.withParams({
-                'owner': parts[0],
-                'repo': parts[1],
-              }),
-            );
-          }
-        },
-        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child: Column(
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header: avatar + name + stars
-              Row(
-                children: [
-                  // Owner avatar
-                  CircleAvatar(
-                    radius: 14,
-                    backgroundColor: theme.colorScheme.primaryContainer,
-                    backgroundImage: repo.ownerAvatarUrl != null
-                        ? NetworkImage(repo.ownerAvatarUrl!)
-                        : null,
-                    child: repo.ownerAvatarUrl == null
-                        ? Text(
-                            owner.isNotEmpty ? owner[0].toUpperCase() : '?',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: theme.colorScheme.onPrimaryContainer,
-                            ),
-                          )
-                        : null,
-                  ),
-                  const SizedBox(width: 8),
-                  // Full name
-                  Expanded(
-                    child: Text(
-                      repo.fullName,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  // Stars
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+              // Avatar
+              GestureDetector(
+                onTap: onOwnerTap,
+                child: CircleAvatar(
+                  radius: 20,
+                  backgroundImage: repo.ownerAvatarUrl != null
+                      ? NetworkImage(repo.ownerAvatarUrl!)
+                      : null,
+                  backgroundColor: theme.colorScheme.primaryContainer,
+                  child: repo.ownerAvatarUrl == null
+                      ? Text(
+                          repo.ownerLogin.isNotEmpty
+                              ? repo.ownerLogin[0].toUpperCase()
+                              : '?',
+                          style: TextStyle(
+                            color: theme.colorScheme.onPrimaryContainer,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      : null,
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              // Content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Owner / Name
+                    Row(
                       children: [
-                        Icon(Icons.star_outline,
-                            size: 14, color: theme.colorScheme.outline),
-                        const SizedBox(width: 4),
+                        GestureDetector(
+                          onTap: onOwnerTap,
+                          child: Text(
+                            repo.ownerLogin,
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
                         Text(
-                          repo.formattedStars,
-                          style: theme.textTheme.labelSmall?.copyWith(
+                          ' / ',
+                          style: theme.textTheme.labelMedium?.copyWith(
                             color: theme.colorScheme.outline,
-                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Flexible(
+                          child: Text(
+                            repo.name,
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-              // Description
-              if (repo.description != null && repo.description!.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  repo.description!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+
+                    // Description
+                    if (repo.description != null &&
+                        repo.description!.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        repo.description!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          height: 1.3,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+
+                    // Stats
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        // Language
+                        if (repo.language != null &&
+                            repo.language!.isNotEmpty) ...[
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              color: _parseColor(repo.languageColor),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            repo.language!,
+                            style: theme.textTheme.labelSmall,
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                        // Stars
+                        const Icon(
+                          Icons.star_outline,
+                          size: 14,
+                          color: Color(0xFFE3B341),
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          _formatCount(repo.stars),
+                          style: theme.textTheme.labelSmall,
+                        ),
+                        const SizedBox(width: 12),
+                        // Forks
+                        Icon(
+                          Icons.fork_right,
+                          size: 14,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          _formatCount(repo.forks),
+                          style: theme.textTheme.labelSmall,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-              // Footer: language + forks + updated
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  // Language
-                  if (repo.language != null && repo.language!.isNotEmpty) ...[
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: _parseColor(repo.languageColor) ??
-                            theme.colorScheme.primary,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      repo.language!,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                  ],
-                  // Forks
-                  Icon(Icons.fork_right,
-                      size: 12, color: theme.colorScheme.outline),
-                  const SizedBox(width: 2),
-                  Text(
-                    repo.formattedForks,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.outline,
-                    ),
-                  ),
-                  const Spacer(),
-                  // Updated time
-                  if (repo.pushedAt != null) ...[
-                    Icon(Icons.access_time,
-                        size: 12, color: theme.colorScheme.outline),
-                    const SizedBox(width: 2),
-                    Text(
-                      _timeAgo(repo.pushedAt!),
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.outline,
-                      ),
-                    ),
-                  ],
-                ],
+              ),
+
+              // Chevron
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Icon(
+                  Icons.chevron_right,
+                  color: theme.colorScheme.outline,
+                ),
               ),
             ],
           ),
@@ -470,29 +551,25 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     );
   }
 
-  Color? _parseColor(String? colorStr) {
-    if (colorStr == null || colorStr.isEmpty) return null;
+  Color _parseColor(String? hexColor) {
+    if (hexColor == null || hexColor.isEmpty) return Colors.grey;
     try {
-      final hex = colorStr.replaceFirst('#', '');
-      return Color(int.parse('FF$hex', radix: 16));
-    } catch (_) {
-      return null;
-    }
+      final hex = hexColor.replaceFirst('#', '');
+      if (hex.length == 6) {
+        return Color(int.parse('FF$hex', radix: 16));
+      } else if (hex.length == 8) {
+        return Color(int.parse(hex, radix: 16));
+      }
+    } catch (_) {}
+    return Colors.grey;
   }
 
-  String _timeAgo(DateTime dateTime) {
-    final now = DateTime.now();
-    final diff = now.difference(dateTime);
-    if (diff.inDays > 365) {
-      return '${(diff.inDays / 365).floor()}y ago';
-    } else if (diff.inDays > 30) {
-      return '${(diff.inDays / 30).floor()}mo ago';
-    } else if (diff.inDays > 0) {
-      return '${diff.inDays}d ago';
-    } else if (diff.inHours > 0) {
-      return '${diff.inHours}h ago';
-    } else {
-      return '${diff.inMinutes}m ago';
+  String _formatCount(int count) {
+    if (count >= 1000000) {
+      return '${(count / 1000000).toStringAsFixed(1)}M';
+    } else if (count >= 1000) {
+      return '${(count / 1000).toStringAsFixed(1)}k';
     }
+    return count.toString();
   }
 }

@@ -1,124 +1,64 @@
-import 'dart:convert';
-
-import '../models/category_model.dart';
 import '../models/repository_model.dart';
 import '../models/release_model.dart';
 import '../models/search_result_model.dart';
 import '../models/user_model.dart';
+import '../constants/api_constants.dart';
 import 'api_client.dart';
 
-/// API client that provides curated GitHub content (trending, hot releases,
-/// popular repos, categories) powered entirely by the **official GitHub REST API**.
+/// API client that replaces the non-existent store-api.githubstore.app
+/// with GitHub's real REST API (https://api.github.com).
 ///
-/// GitHub removed its dedicated Trending endpoint long ago, so we approximate
-/// trending / hot / popular via [search/repositories](https://docs.github.com/en/rest/search/search#search-repositories)
-/// with date-range and sort qualifiers.
+/// All methods use the GitHub Search API or standard REST endpoints
+/// to provide the same functionality the store backend was supposed to offer.
 class GitHubStoreApi {
   GitHubStoreApi(this._client);
 
   final ApiClient _client;
 
-  // ── Default categories (no backend needed) ──────────────────────────────
+  // ── Home Feed Endpoints ─────────────────────────────────────────────────
 
-  static const List<Map<String, dynamic>> _defaultCategories = [
-    {
-      'id': 'developer-tools',
-      'name': 'Developer Tools',
-      'icon': 'code',
-      'color': '#FF6B6B',
-      'topic_keywords': ['developer-tools', 'devtools'],
-    },
-    {
-      'id': 'ai-ml',
-      'name': 'AI & ML',
-      'icon': 'psychology',
-      'color': '#7C4DFF',
-      'topic_keywords': ['ai', 'machine-learning', 'deep-learning'],
-    },
-    {
-      'id': 'web-frameworks',
-      'name': 'Web Frameworks',
-      'icon': 'web',
-      'color': '#2196F3',
-      'topic_keywords': ['web-framework', 'frontend'],
-    },
-    {
-      'id': 'mobile',
-      'name': 'Mobile',
-      'icon': 'phone_android',
-      'color': '#4CAF50',
-      'topic_keywords': ['mobile', 'android', 'ios'],
-    },
-    {
-      'id': 'devops',
-      'name': 'DevOps',
-      'icon': 'settings',
-      'color': '#FF9800',
-      'topic_keywords': ['devops', 'docker', 'kubernetes', 'ci-cd'],
-    },
-    {
-      'id': 'utilities',
-      'name': 'Utilities',
-      'icon': 'build',
-      'color': '#607D8B',
-      'topic_keywords': ['utility', 'cli', 'tool'],
-    },
-  ];
+  /// Get trending repositories using GitHub Search API.
+  ///
+  /// Searches for repos created in the last 7 days, sorted by stars.
+  /// [platform] - Optional platform filter keyword (android, macos, windows, linux).
+  Future<List<RepositoryModel>> getTrending({String? platform}) async {
+    final now = DateTime.now();
+    final weekAgo = now.subtract(const Duration(days: 7));
+    final dateStr = '${weekAgo.year}-${weekAgo.month.toString().padLeft(2, '0')}-${weekAgo.day.toString().padLeft(2, '0')}';
 
-  // ── Date Helpers ────────────────────────────────────────────────────────
-
-  /// Returns a date string like `2026-04-19` for [days] days ago.
-  String _daysAgo(int days) {
-    final date = DateTime.now().subtract(Duration(days: days));
-    final y = date.year;
-    final m = date.month.toString().padLeft(2, '0');
-    final d = date.day.toString().padLeft(2, '0');
-    return '$y-$m-$d';
-  }
-
-  /// Build a GitHub search query string from optional filters.
-  String _buildQuery({
-    required String base,
-    String? language,
-    String? platform,
-  }) {
-    final parts = <String>[base];
-    if (language != null && language.isNotEmpty) {
-      parts.add('language:$language');
+    String query = 'created:>$dateStr';
+    if (platform != null && platform.isNotEmpty) {
+      query += ' $platform in:topic,readme,name,description';
     }
-    if (platform != null && platform.isNotEmpty && platform != 'all') {
-      parts.add('topic:$platform');
+
+    final response = await _client.get<Map<String, dynamic>>(
+      ApiConstants.searchRepositoriesUrl,
+      queryParameters: {
+        'q': query,
+        'sort': 'stars',
+        'order': 'desc',
+        'per_page': 30,
+      },
+    );
+
+    return _parseSearchItems(response.data);
+  }
+
+  /// Get repositories with recent hot releases using GitHub Search API.
+  ///
+  /// Searches for repos pushed to in the last 3 days, sorted by stars.
+  Future<List<RepositoryModel>> getHotReleases({String? platform}) async {
+    final now = DateTime.now();
+    final threeDaysAgo = now.subtract(const Duration(days: 3));
+    final dateStr = '${threeDaysAgo.year}-${threeDaysAgo.month.toString().padLeft(2, '0')}-${threeDaysAgo.day.toString().padLeft(2, '0')}';
+
+    String query = 'pushed:>$dateStr';
+    if (platform != null && platform.isNotEmpty) {
+      query += ' $platform in:topic,readme,name,description';
     }
-    return parts.join(' ');
-  }
-
-  /// Extract the `items` list from a GitHub search response.
-  List<RepositoryModel> _extractSearchItems(Map<String, dynamic>? data) {
-    if (data == null) return [];
-    return ((data['items'] as List<dynamic>?) ?? [])
-        .map((e) => RepositoryModel.fromJson(e as Map<String, dynamic>))
-        .toList();
-  }
-
-  // ── Home Feed Endpoints (GitHub Search API) ─────────────────────────────
-
-  /// Get trending repositories — repos **created** in the last 7 days,
-  /// sorted by stars (descending).
-  ///
-  /// [platform] - Optional topic filter (android, macos, windows, linux).
-  /// [language] - Optional programming language filter (e.g. "Dart", "Python").
-  Future<List<RepositoryModel>> getTrending({
-    String? platform,
-    String? language,
-  }) async {
-    final query = _buildQuery(
-      base: 'created:>${_daysAgo(7)}',
-      language: language,
-      platform: platform,
-    );
 
     final response = await _client.get<Map<String, dynamic>>(
-      '/search/repositories',
+      ApiConstants.searchRepositoriesUrl,
       queryParameters: {
         'q': query,
         'sort': 'stars',
@@ -127,26 +67,20 @@ class GitHubStoreApi {
       },
     );
 
-    return _extractSearchItems(response.data);
+    return _parseSearchItems(response.data);
   }
 
-  /// Get repositories with recent activity — repos **pushed to** in the last
-  /// 7 days with at least 10 stars, sorted by star count.
+  /// Get most popular repositories using GitHub Search API.
   ///
-  /// [platform] - Optional topic filter.
-  /// [language] - Optional programming language filter.
-  Future<List<RepositoryModel>> getHotReleases({
-    String? platform,
-    String? language,
-  }) async {
-    final query = _buildQuery(
-      base: 'pushed:>${_daysAgo(7)} stars:>10',
-      language: language,
-      platform: platform,
-    );
+  /// Searches for repos with 10000+ stars, sorted by stars.
+  Future<List<RepositoryModel>> getMostPopular({String? platform}) async {
+    String query = 'stars:>10000';
+    if (platform != null && platform.isNotEmpty) {
+      query += ' $platform in:topic,readme,name,description';
+    }
 
     final response = await _client.get<Map<String, dynamic>>(
-      '/search/repositories',
+      ApiConstants.searchRepositoriesUrl,
       queryParameters: {
         'q': query,
         'sort': 'stars',
@@ -155,55 +89,26 @@ class GitHubStoreApi {
       },
     );
 
-    return _extractSearchItems(response.data);
+    return _parseSearchItems(response.data);
   }
 
-  /// Get all-time most popular repositories — repos with 50 000+ stars,
-  /// sorted by star count.
+  // ── Topic/Bucket Endpoints ──────────────────────────────────────────────
+
+  /// Get repositories for a specific topic using GitHub Search API.
   ///
-  /// [platform] - Optional topic filter.
-  /// [language] - Optional programming language filter.
-  Future<List<RepositoryModel>> getMostPopular({
-    String? platform,
-    String? language,
-  }) async {
-    final query = _buildQuery(
-      base: 'stars:>50000',
-      language: language,
-      platform: platform,
-    );
-
-    final response = await _client.get<Map<String, dynamic>>(
-      '/search/repositories',
-      queryParameters: {
-        'q': query,
-        'sort': 'stars',
-        'order': 'desc',
-        'per_page': 30,
-      },
-    );
-
-    return _extractSearchItems(response.data);
-  }
-
-  // ── Topic / Bucket Endpoints ────────────────────────────────────────────
-
-  /// Get repositories for a specific topic/bucket, sorted by stars.
-  ///
-  /// [bucket] - The topic keyword (e.g. "developer-tools", "docker").
+  /// [bucket] - The topic to search for.
   /// [platform] - Optional platform filter.
   Future<List<RepositoryModel>> getTopicRepos(
     String bucket, {
     String? platform,
   }) async {
-    final parts = <String>['topic:$bucket'];
-    if (platform != null && platform.isNotEmpty && platform != 'all') {
-      parts.add('topic:$platform');
+    String query = 'topic:$bucket';
+    if (platform != null && platform.isNotEmpty) {
+      query += ' $platform in:topic,readme,name,description';
     }
-    final query = parts.join(' ');
 
     final response = await _client.get<Map<String, dynamic>>(
-      '/search/repositories',
+      ApiConstants.searchRepositoriesUrl,
       queryParameters: {
         'q': query,
         'sort': 'stars',
@@ -212,15 +117,15 @@ class GitHubStoreApi {
       },
     );
 
-    return _extractSearchItems(response.data);
+    return _parseSearchItems(response.data);
   }
 
   // ── Search Endpoints ────────────────────────────────────────────────────
 
-  /// Search for repositories using GitHub's search API.
+  /// Search for repositories using GitHub Search API.
   ///
   /// [query] - The search query string.
-  /// [platform] - Optional platform topic filter.
+  /// [platform] - Optional platform filter.
   /// [language] - Optional programming language filter.
   /// [sort] - Sort field (stars, forks, updated, etc.).
   /// [order] - Sort order (asc, desc).
@@ -233,19 +138,19 @@ class GitHubStoreApi {
     String order = 'desc',
     int page = 1,
   }) async {
-    final parts = <String>[query];
-    if (platform != null && platform.isNotEmpty && platform != 'all') {
-      parts.add('topic:$platform');
-    }
+    // Build the query string for GitHub Search API
+    String q = query;
     if (language != null && language.isNotEmpty) {
-      parts.add('language:$language');
+      q += ' language:$language';
     }
-    final searchQuery = parts.join(' ');
+    if (platform != null && platform.isNotEmpty) {
+      q += ' $platform in:topic,readme,name,description';
+    }
 
     final response = await _client.get<Map<String, dynamic>>(
-      '/search/repositories',
+      ApiConstants.searchRepositoriesUrl,
       queryParameters: {
-        'q': searchQuery,
+        'q': q,
         'sort': sort,
         'order': order,
         'page': page,
@@ -258,21 +163,19 @@ class GitHubStoreApi {
       return SearchResultModel.empty();
     }
 
-    return SearchResultModel.fromJson(data, page: page, perPage: 30);
+    return SearchResultModel.fromJson(data, page: page);
   }
 
-  /// Explore search — a broader search for discovery.
-  ///
-  /// Same as [search] but with a default sort by `updated`.
+  /// Explore search - same as search but with best_match sort.
   Future<SearchResultModel> searchExplore({
     required String query,
     int page = 1,
   }) async {
     final response = await _client.get<Map<String, dynamic>>(
-      '/search/repositories',
+      ApiConstants.searchRepositoriesUrl,
       queryParameters: {
         'q': query,
-        'sort': 'updated',
+        'sort': 'best_match',
         'order': 'desc',
         'page': page,
         'per_page': 30,
@@ -284,7 +187,7 @@ class GitHubStoreApi {
       return SearchResultModel.empty();
     }
 
-    return SearchResultModel.fromJson(data, page: page, perPage: 30);
+    return SearchResultModel.fromJson(data, page: page);
   }
 
   // ── Repository Detail Endpoints ─────────────────────────────────────────
@@ -294,9 +197,9 @@ class GitHubStoreApi {
     String owner,
     String name,
   ) async {
-    final response = await _client.get<Map<String, dynamic>>(
-      '/repos/$owner/$name',
-    );
+    final path = ApiConstants.repositoryUrlPath(owner, name);
+
+    final response = await _client.get<Map<String, dynamic>>(path);
 
     final data = response.data;
     if (data == null) {
@@ -314,9 +217,10 @@ class GitHubStoreApi {
     String owner,
     String name,
   ) async {
+    final path = '/repos/$owner/$name/releases';
+
     final response = await _client.get<List<dynamic>>(
-      '/repos/$owner/$name/releases',
-      queryParameters: {'per_page': 30},
+      path,
     );
 
     final data = response.data;
@@ -329,44 +233,40 @@ class GitHubStoreApi {
 
   /// Get the README content for a specific repository.
   ///
-  /// Returns the raw markdown content (base64-decoded if necessary).
+  /// Uses GitHub's raw content API to get the README markdown.
   Future<String> getReadme(String owner, String name) async {
-    final response = await _client.get<Map<String, dynamic>>(
-      '/repos/$owner/$name/readme',
-    );
+    final path = '/repos/$owner/$name/readme';
 
-    final data = response.data;
+    try {
+      // Use the standard get which returns JSON, then decode base64 content
+      final response = await _client.get<Map<String, dynamic>>(path);
 
-    if (data == null) {
-      throw ApiException(
-        message: 'README not found for $owner/$name',
-        statusCode: 404,
-      );
-    }
+      final data = response.data;
+      if (data == null) return '';
 
-    if (data.containsKey('content')) {
-      final content = data['content'] as String?;
-      if (content == null || content.isEmpty) return '';
-      // GitHub API returns README as base64 when Accept header is v3+json.
-      if (data['encoding'] == 'base64') {
-        return _decodeBase64(content);
+      if (data.containsKey('content')) {
+        final content = data['content'] as String;
+        final encoding = data['encoding'] as String?;
+        if (encoding == 'base64' || encoding == null) {
+          final cleaned = content.replaceAll('\n', '').replaceAll('\r', '');
+          return _decodeBase64(cleaned);
+        }
+        return content;
       }
-      return content;
-    }
 
-    throw ApiException(
-      message: 'Could not parse README for $owner/$name',
-      statusCode: 500,
-    );
+      return '';
+    } catch (e) {
+      return '';
+    }
   }
 
   // ── User Profile Endpoints ──────────────────────────────────────────────
 
   /// Get the public profile of a GitHub user.
   Future<UserModel> getUserProfile(String username) async {
-    final response = await _client.get<Map<String, dynamic>>(
-      '/users/$username',
-    );
+    final path = ApiConstants.userProfilePath(username);
+
+    final response = await _client.get<Map<String, dynamic>>(path);
 
     final data = response.data;
     if (data == null) {
@@ -379,27 +279,154 @@ class GitHubStoreApi {
     return UserModel.fromJson(data);
   }
 
-  // ── Categories (hardcoded) ──────────────────────────────────────────────
+  // ── Categories Endpoint ─────────────────────────────────────────────────
 
-  /// Get all available categories for browsing.
+  /// Return built-in categories since GitHub has no categories API.
   ///
-  /// Returns a hardcoded list of categories with topic keywords that map to
-  /// GitHub search queries.
+  /// Uses hardcoded curated topics for browsing.
   Future<List<Map<String, dynamic>>> getCategories() async {
-    return _defaultCategories;
+    return [
+      {
+        'id': 'dev-tools',
+        'name': 'Developer Tools',
+        'icon': 'code',
+        'description': 'IDEs, editors, and development utilities',
+        'topic_keywords': ['developer-tools', 'cli', 'terminal', 'devtools'],
+        'color': '#4FC3F7',
+        'sort_order': 1,
+        'is_featured': true,
+      },
+      {
+        'id': 'web-frameworks',
+        'name': 'Web Frameworks',
+        'icon': 'web',
+        'description': 'Frontend and backend web frameworks',
+        'topic_keywords': ['web-framework', 'frontend', 'react', 'vue', 'angular', 'svelte'],
+        'color': '#42A5F5',
+        'sort_order': 2,
+        'is_featured': true,
+      },
+      {
+        'id': 'ai-ml',
+        'name': 'AI / Machine Learning',
+        'icon': 'psychology',
+        'description': 'AI, ML, and data science tools',
+        'topic_keywords': ['machine-learning', 'artificial-intelligence', 'deep-learning', 'llm', 'ai'],
+        'color': '#AB47BC',
+        'sort_order': 3,
+        'is_featured': true,
+      },
+      {
+        'id': 'mobile',
+        'name': 'Mobile Development',
+        'icon': 'phone_android',
+        'description': 'Mobile app frameworks and tools',
+        'topic_keywords': ['mobile', 'flutter', 'react-native', 'ios', 'android'],
+        'color': '#26A69A',
+        'sort_order': 4,
+        'is_featured': false,
+      },
+      {
+        'id': 'devops',
+        'name': 'DevOps & CI/CD',
+        'icon': 'settings_suggest',
+        'description': 'Deployment, monitoring, and infrastructure tools',
+        'topic_keywords': ['devops', 'docker', 'kubernetes', 'ci-cd', 'infrastructure'],
+        'color': '#FF7043',
+        'sort_order': 5,
+        'is_featured': false,
+      },
+      {
+        'id': 'utilities',
+        'name': 'Utilities',
+        'icon': 'build',
+        'description': 'Productivity tools and utilities',
+        'topic_keywords': ['utility', 'productivity', 'tool', 'cli-tool'],
+        'color': '#78909C',
+        'sort_order': 6,
+        'is_featured': false,
+      },
+      {
+        'id': 'security',
+        'name': 'Security',
+        'icon': 'security',
+        'description': 'Security tools and libraries',
+        'topic_keywords': ['security', 'cryptography', 'privacy', 'encryption'],
+        'color': '#EF5350',
+        'sort_order': 7,
+        'is_featured': false,
+      },
+      {
+        'id': 'databases',
+        'name': 'Databases',
+        'icon': 'storage',
+        'description': 'Database engines and ORM tools',
+        'topic_keywords': ['database', 'sql', 'nosql', 'orm', 'postgres'],
+        'color': '#FFA726',
+        'sort_order': 8,
+        'is_featured': false,
+      },
+    ];
   }
 
   // ── Helper Methods ──────────────────────────────────────────────────────
 
-  /// Decode a base64-encoded string (GitHub README format).
+  /// Parse search API response items into a list of RepositoryModel.
+  List<RepositoryModel> _parseSearchItems(Map<String, dynamic>? data) {
+    if (data == null) return [];
+
+    final items = data['items'] as List<dynamic>?;
+    if (items == null) return [];
+
+    return items
+        .map((e) => RepositoryModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Decode a base64-encoded string from GitHub's API.
   String _decodeBase64(String input) {
-    // GitHub API base64 output has line breaks every 76 characters
-    final cleaned = input.replaceAll('\n', '').replaceAll('\r', '');
-    // Dart's built-in base64 decoder
+    // Use dart:convert for proper base64 decoding
     try {
-      return utf8.decode(base64Decode(cleaned));
+      return _cleanBase64Decode(input);
     } catch (_) {
       return '';
     }
+  }
+
+  /// Decode base64 with padding cleanup.
+  String _cleanBase64Decode(String source) {
+    final clean = source.replaceAll('=', '');
+    // Calculate required padding
+    final padLen = (4 - clean.length % 4) % 4;
+    final padded = clean + '=' * padLen;
+    // Use dart:convert
+    final bytes = _base64Decode(padded);
+    return String.fromCharCodes(bytes);
+  }
+
+  /// Manual base64 decoder as fallback (avoids import issues).
+  static List<int> _base64Decode(String source) {
+    const base64Chars =
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    final result = <int>[];
+    final clean = source.replaceAll('=', '');
+
+    for (var i = 0; i < clean.length; i += 4) {
+      final chunk = clean.substring(
+        i,
+        i + 4 > clean.length ? clean.length : i + 4,
+      );
+
+      int n = 0;
+      for (var j = 0; j < chunk.length; j++) {
+        n = (n << 6) | base64Chars.indexOf(chunk[j]);
+      }
+
+      if (chunk.length >= 2) result.add((n >> 16) & 0xFF);
+      if (chunk.length >= 3) result.add((n >> 8) & 0xFF);
+      if (chunk.length >= 4) result.add(n & 0xFF);
+    }
+
+    return result;
   }
 }

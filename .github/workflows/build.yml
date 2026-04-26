@@ -28,25 +28,23 @@ jobs:
       - name: Enable Windows desktop
         run: flutter config --enable-windows-desktop
 
+      # === 关键优化: Release 模式 + Tree Shaking ===
       - name: Build Windows (Release)
         run: |
-          flutter build windows --release --tree-shake-icons
+          flutter build windows `
+            --release `
+            --tree-shake-icons `
+            --obfuscate `
+            --split-debug-info=debug-info
 
-      - name: Clean & Package Windows
+      # 打包为 zip (只包含运行所需文件, 排除 debug-info)
+      - name: Package Windows
         run: |
-          $releaseDir = "build\windows\x64\runner\Release"
-          Get-ChildItem "$releaseDir\*.pdb" -ErrorAction SilentlyContinue | Remove-Item -Force
           mkdir package
-          Copy-Item -Recurse "$releaseDir\*" package\
+          cp -r build/windows/x64/runner/Release/* package/
           cd package
-          & 7z a -mx=9 ..\GitHub-Store-Flutter-Windows.zip *
+          7z a ../GitHub-Store-Flutter-Windows.zip *
           cd ..
-
-      - name: Report Size
-        run: |
-          $zipSize = (Get-Item "GitHub-Store-Flutter-Windows.zip").Length / 1MB
-          Write-Host "=== Windows Build Size ==="
-          Write-Host "ZIP: $([math]::Round($zipSize, 2)) MB"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -54,9 +52,16 @@ jobs:
           name: windows-release
           path: GitHub-Store-Flutter-Windows.zip
 
-  build-macos-arm64:
-    name: macOS Build (ARM64)
-    runs-on: macos-14
+      - name: Get file size
+        run: |
+          $size = (Get-Item "GitHub-Store-Flutter-Windows.zip").Length / 1MB
+          Write-Host "Windows zip size: $([math]::Round($size, 2)) MB"
+          $folderSize = (Get-ChildItem -Recurse package | Measure-Object -Property Length -Sum).Sum / 1MB
+          Write-Host "Windows folder size: $([math]::Round($folderSize, 2)) MB"
+
+  build-macos:
+    name: macOS Build
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -71,105 +76,27 @@ jobs:
 
       - name: Build macOS (Release)
         run: |
-          flutter build macos --release --tree-shake-icons
+          flutter build macos \
+            --release \
+            --tree-shake-icons
 
-      - name: Optimize & Package macOS ARM64
+      - name: Package macOS
         run: |
-          APP_PATH="build/macos/Build/Products/Release/github_store_flutter.app"
-          FRAMEWORKS="$APP_PATH/Contents/Frameworks"
-          ARCH="arm64"
-
-          echo "=== Step 1: Strip debug symbols ==="
-          for framework in "$FRAMEWORKS"/*.framework; do
-            if [ -d "$framework" ]; then
-              BINARY_NAME="$(basename "$framework" .framework)"
-              for BINARY_PATH in "$framework/$BINARY_NAME" "$framework/Versions/A/$BINARY_NAME"; do
-                if [ -f "$BINARY_PATH" ]; then
-                  echo "  Stripping: $BINARY_PATH"
-                  strip -x -S "$BINARY_PATH" 2>/dev/null || true
-                fi
-              done
-            fi
-          done
-          for dylib in "$FRAMEWORKS"/*.dylib; do
-            if [ -f "$dylib" ]; then
-              echo "  Stripping: $(basename "$dylib")"
-              strip -x -S "$dylib" 2>/dev/null || true
-            fi
-          done
-
-          echo "=== Step 2: Thin frameworks to $ARCH only ==="
-          for framework in "$FRAMEWORKS"/*.framework; do
-            if [ -d "$framework" ]; then
-              BINARY_NAME="$(basename "$framework" .framework)"
-              for BINARY_PATH in "$framework/Versions/A/$BINARY_NAME" "$framework/$BINARY_NAME"; do
-                if [ -f "$BINARY_PATH" ]; then
-                  ARCHS=$(lipo -info "$BINARY_PATH" 2>/dev/null || echo "single")
-                  if echo "$ARCHS" | grep -q "arm64.*x86_64\|x86_64.*arm64"; then
-                    echo "  Thinning: $BINARY_PATH -> $ARCH"
-                    lipo -thin "$ARCH" -output "$BINARY_PATH" "$BINARY_PATH" 2>/dev/null || true
-                  fi
-                fi
-              done
-            fi
-          done
-          for dylib in "$FRAMEWORKS"/*.dylib; do
-            if [ -f "$dylib" ]; then
-              ARCHS=$(lipo -info "$dylib" 2>/dev/null || echo "single")
-              if echo "$ARCHS" | grep -q "arm64.*x86_64\|x86_64.*arm64"; then
-                echo "  Thinning: $(basename "$dylib") -> $ARCH"
-                lipo -thin "$ARCH" -output "$dylib" "$dylib" 2>/dev/null || true
-              fi
-            fi
-          done
-
-          echo "=== Step 3: Remove system Swift dylibs ==="
-          rm -f "$FRAMEWORKS"/libswift*.dylib
-
-          echo "=== Step 4: Remove dSYM files ==="
-          find "$APP_PATH" -name "*.dSYM" -type d -exec rm -rf {} + 2>/dev/null || true
-
-          echo "=== Step 5: Re-sign after strip/lipo (fix codesign) ==="
-          codesign --force --deep --sign - "$APP_PATH"
-
-          echo "=== Step 6: Rebuild framework symlinks ==="
-          for framework in "$FRAMEWORKS"/*.framework; do
-            if [ -d "$framework" ]; then
-              BINARY_NAME="$(basename "$framework" .framework)"
-              if [ -d "$framework/Versions" ]; then
-                rm -f "$framework/Versions/Current"
-                ln -s A "$framework/Versions/Current"
-                rm -f "$framework/$BINARY_NAME"
-                ln -s "Versions/Current/$BINARY_NAME" "$framework/$BINARY_NAME"
-                if [ -d "$framework/Versions/A/Resources" ]; then
-                  rm -f "$framework/Resources"
-                  ln -s "Versions/Current/Resources" "$framework/Resources"
-                fi
-              fi
-            fi
-          done
-
-          APP_SIZE=$(du -sh "$APP_PATH" | cut -f1)
-          echo "App bundle size after optimization: $APP_SIZE"
-
-          cd "$APP_PATH/.."
-          zip -r -9 -y GitHub-Store-Flutter-macOS-ARM64.zip github_store_flutter.app/
-          mv GitHub-Store-Flutter-macOS-ARM64.zip "$GITHUB_WORKSPACE/"
-
-      - name: Report Size
-        run: |
-          ZIP_SIZE=$(du -sh GitHub-Store-Flutter-macOS-ARM64.zip | cut -f1)
-          echo "=== macOS ARM64 Build Size ==="
-          echo "ZIP: $ZIP_SIZE"
-          echo ""
-          echo "=== Framework Breakdown ==="
-          du -sh build/macos/Build/Products/Release/github_store_flutter.app/Contents/Frameworks/* 2>/dev/null | sort -rh | head -8
+          mkdir -p package/GitHub-Store-Flutter.app
+          cp -r build/macos/Build/Products/Release/GitHub-Store-Flutter.app/* package/GitHub-Store-Flutter.app/
+          cd package
+          zip -r -9 ../GitHub-Store-Flutter-macOS.zip GitHub-Store-Flutter.app/
+          cd ..
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: macos-arm64-release
-          path: GitHub-Store-Flutter-macOS-ARM64.zip
+          name: macos-release
+          path: GitHub-Store-Flutter-macOS.zip
+
+      - name: Get file size
+        run: |
+          echo "macOS zip size: $(du -sh GitHub-Store-Flutter-macOS.zip | cut -f1)"
 
   build-linux:
     name: Linux Build
@@ -186,41 +113,24 @@ jobs:
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libayatana-appindicator3-dev libsecret-1-dev
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
 
       - name: Get dependencies
         run: flutter pub get
 
       - name: Build Linux (Release)
         run: |
-          flutter build linux --release --tree-shake-icons
+          flutter build linux \
+            --release \
+            --tree-shake-icons
 
-      - name: Strip & Package Linux
+      - name: Package Linux
         run: |
-          BUNDLE_DIR="build/linux/x64/release/bundle"
-
-          echo "=== Stripping debug symbols ==="
-          for lib in "$BUNDLE_DIR"/lib/*.so; do
-            if [ -f "$lib" ]; then
-              echo "  Stripping: $(basename "$lib")"
-              strip --strip-unneeded "$lib" 2>/dev/null || true
-            fi
-          done
-
-          strip --strip-unneeded "$BUNDLE_DIR/github_store_flutter" 2>/dev/null || true
-          rm -rf "$BUNDLE_DIR/debug" "$BUNDLE_DIR/lib/debug" 2>/dev/null || true
-
           mkdir -p package
-          cp -r "$BUNDLE_DIR"/* package/
+          cp -r build/linux/x64/release/bundle/* package/
           cd package
           tar -czf ../GitHub-Store-Flutter-Linux.tar.gz *
           cd ..
-
-      - name: Report Size
-        run: |
-          TAR_SIZE=$(du -sh GitHub-Store-Flutter-Linux.tar.gz | cut -f1)
-          echo "=== Linux Build Size ==="
-          echo "TAR.GZ: $TAR_SIZE"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -228,9 +138,14 @@ jobs:
           name: linux-release
           path: GitHub-Store-Flutter-Linux.tar.gz
 
+      - name: Get file size
+        run: |
+          echo "Linux tar.gz size: $(du -sh GitHub-Store-Flutter-Linux.tar.gz | cut -f1)"
+
+  # 发布 Release
   release:
     name: Create Release
-    needs: [build-windows, build-macos-arm64, build-linux]
+    needs: [build-windows, build-macos, build-linux]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
@@ -239,24 +154,19 @@ jobs:
         with:
           path: artifacts
 
-      - name: Report All Sizes
+      - name: List files
         run: |
-          echo "========================================="
-          echo "   GitHub-Store-Flutter Release Sizes"
-          echo "========================================="
-          echo ""
-          echo "Windows:      $(du -sh artifacts/windows-release/GitHub-Store-Flutter-Windows.zip | cut -f1)"
-          echo "macOS ARM64:  $(du -sh artifacts/macos-arm64-release/GitHub-Store-Flutter-macOS-ARM64.zip | cut -f1)"
-          echo "Linux:        $(du -sh artifacts/linux-release/GitHub-Store-Flutter-Linux.tar.gz | cut -f1)"
-          echo ""
-          echo "========================================="
+          echo "=== 打包文件大小 ==="
+          ls -lh artifacts/windows-release/GitHub-Store-Flutter-Windows.zip
+          ls -lh artifacts/macos-release/GitHub-Store-Flutter-macOS.zip
+          ls -lh artifacts/linux-release/GitHub-Store-Flutter-Linux.tar.gz
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             artifacts/windows-release/GitHub-Store-Flutter-Windows.zip
-            artifacts/macos-arm64-release/GitHub-Store-Flutter-macOS-ARM64.zip
+            artifacts/macos-release/GitHub-Store-Flutter-macOS.zip
             artifacts/linux-release/GitHub-Store-Flutter-Linux.tar.gz
           generate_release_notes: true
           draft: false

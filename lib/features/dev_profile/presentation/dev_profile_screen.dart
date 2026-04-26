@@ -113,6 +113,11 @@ class _DevProfileScreenState extends ConsumerState<DevProfileScreen> {
           SliverAppBar(
             expandedHeight: 200,
             pinned: true,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => context.pop(),
+              tooltip: 'Back',
+            ),
             actions: [
               IconButton(
                 icon: const Icon(Icons.share),
@@ -129,8 +134,8 @@ class _DevProfileScreenState extends ConsumerState<DevProfileScreen> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      theme.colorScheme.primary.withOpacity( 0.15),
-                      theme.colorScheme.secondaryContainer.withOpacity( 0.08),
+                      theme.colorScheme.primary.withValues(alpha: 0.15),
+                      theme.colorScheme.secondaryContainer.withValues(alpha: 0.08),
                       theme.scaffoldBackgroundColor,
                     ],
                   ),

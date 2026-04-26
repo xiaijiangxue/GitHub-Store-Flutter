@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_router.dart';
 import '../presentation/providers/home_provider.dart';
-import '../presentation/widgets/language_filter_bar.dart';
 import '../presentation/widgets/platform_filter_bar.dart';
 import '../presentation/widgets/trending_section.dart';
 
@@ -65,7 +64,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 IconButton(
                   icon: const Icon(Icons.search_outlined),
                   tooltip: 'Search',
-                  onPressed: () => context.go(AppRoute.search.path),
+                  onPressed: () => context.push(AppRoute.search.path),
                 ),
                 // Refresh button (for Desktop where pull-to-refresh isn't natural)
                 IconButton(
@@ -103,11 +102,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: PlatformFilterBar(),
             ),
 
-            // ── Language Filter Bar ──────────────────────────────────────
-            const SliverToBoxAdapter(
-              child: LanguageFilterBar(),
-            ),
-
             // ── Category Chips Row ──────────────────────────────────────
             SliverToBoxAdapter(
               child: _buildCategoryChips(theme),
@@ -122,10 +116,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 reposAsync: ref.watch(homeTrendingProvider),
                 onSeeAll: () {
                   // Navigate to a full trending view
-                  context.go(
-                    AppRoute.search.path,
-                    extra: {'section': 'trending'},
-                  );
+                  context.push(AppRoute.search.path);
                 },
                 onRetry: () => ref.invalidate(homeTrendingProvider),
                 maxItems: 6,
@@ -141,10 +132,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 icon: Icons.new_releases_outlined,
                 reposAsync: ref.watch(homeHotReleasesProvider),
                 onSeeAll: () {
-                  context.go(
-                    AppRoute.search.path,
-                    extra: {'section': 'hot-releases'},
-                  );
+                  context.push(AppRoute.search.path);
                 },
                 onRetry: () => ref.invalidate(homeHotReleasesProvider),
                 maxItems: 6,
@@ -160,10 +148,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 icon: Icons.star_outline,
                 reposAsync: ref.watch(homePopularProvider),
                 onSeeAll: () {
-                  context.go(
-                    AppRoute.search.path,
-                    extra: {'section': 'popular'},
-                  );
+                  context.push(AppRoute.search.path);
                 },
                 onRetry: () => ref.invalidate(homePopularProvider),
                 maxItems: 6,
@@ -184,7 +169,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// Tappable search bar that navigates to the search screen.
   Widget _buildSearchBar(ThemeData theme) {
     return InkWell(
-      onTap: () => context.go(AppRoute.search.path),
+      onTap: () => context.push(AppRoute.search.path),
       borderRadius: BorderRadius.circular(12),
       child: Container(
         height: 48,

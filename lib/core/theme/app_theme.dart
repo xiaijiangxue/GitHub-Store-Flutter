@@ -108,7 +108,7 @@ class AppTheme {
                 ? const Color(0xFF161B22)
                 : Colors.white,
         foregroundColor: colors.onSurface,
-        surfaceTintColor: colors.primary.withOpacity( 0.08),
+        surfaceTintColor: colors.primary.withValues(alpha: 0.08),
         titleTextStyle: TextStyle(
           color: colors.onSurface,
           fontSize: 20,
@@ -119,13 +119,13 @@ class AppTheme {
       ),
 
       // ── Card ───────────────────────────────────────────────────────────
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 0,
         color: colors.card,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: colors.outlineVariant.withOpacity( 0.5)),
+          side: BorderSide(color: colors.outlineVariant.withValues(alpha: 0.5)),
         ),
         margin: EdgeInsets.zero,
       ),
@@ -276,7 +276,7 @@ class AppTheme {
           fontWeight: FontWeight.w400,
         ),
         useIndicator: true,
-        indicatorColor: colors.primary.withOpacity( 0.12),
+        indicatorColor: colors.primary.withValues(alpha: 0.12),
       ),
 
       // ── Chip ───────────────────────────────────────────────────────────
@@ -297,7 +297,7 @@ class AppTheme {
       ),
 
       // ── Dialog ─────────────────────────────────────────────────────────
-      dialogTheme: DialogTheme(
+      dialogTheme: DialogThemeData(
         backgroundColor: isAmoled
             ? const Color(0xFF0D0D0D)
             : isDark
@@ -387,7 +387,7 @@ class AppTheme {
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return colors.primary.withOpacity( 0.5);
+            return colors.primary.withValues(alpha: 0.5);
           }
           return isDark ? const Color(0xFF30363D) : const Color(0xFFD0D7DE);
         }),
@@ -415,12 +415,12 @@ class AppTheme {
         activeTrackColor: colors.primary,
         inactiveTrackColor: colors.outlineVariant,
         thumbColor: colors.primary,
-        overlayColor: colors.primary.withOpacity( 0.12),
+        overlayColor: colors.primary.withValues(alpha: 0.12),
       ),
 
       // ── Scrollbar ──────────────────────────────────────────────────────
       scrollbarTheme: ScrollbarThemeData(
-        thumbColor: WidgetStateProperty.all(colors.outline.withOpacity( 0.4)),
+        thumbColor: WidgetStateProperty.all(colors.outline.withValues(alpha: 0.4)),
         trackColor: WidgetStateProperty.all(Colors.transparent),
         radius: const Radius.circular(6),
         thickness: WidgetStateProperty.all(8),

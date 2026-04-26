@@ -6,8 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../../auth/presentation/providers/auth_provider.dart';
 import 'providers/profile_provider.dart';
 
-import '../../../core/router/app_router.dart';
-
 /// User profile screen showing auth status, stats, and navigation menu.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -52,7 +50,7 @@ class ProfileScreen extends ConsumerWidget {
                   else
                     _GuestHeader(
                       theme: theme,
-                      onSignIn: () => context.go('/auth'),
+                      onSignIn: () => context.go('/profile/auth'),
                     ),
 
                   const SizedBox(height: 28),
@@ -91,7 +89,13 @@ class ProfileScreen extends ConsumerWidget {
                     icon: Icons.download_outlined,
                     title: 'Downloads',
                     subtitle: '${stats.downloadedCount} downloads',
-                    onTap: () => context.push(AppRoute.search.path),
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Download history coming soon!'),
+                        ),
+                      );
+                    },
                   ),
                   _ProfileMenuItem(
                     icon: Icons.settings_outlined,

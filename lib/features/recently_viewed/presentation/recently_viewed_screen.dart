@@ -95,6 +95,11 @@ class _RecentlyViewedScreenState extends ConsumerState<RecentlyViewedScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.pop(),
+          tooltip: 'Back',
+        ),
         title: const Text('Recently Viewed'),
         actions: [
           TextButton(

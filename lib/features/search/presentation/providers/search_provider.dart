@@ -243,7 +243,6 @@ class SearchResultsNotifier extends AsyncNotifier<SearchResultModel> {
     return switch (sort) {
       'stars' => 'stars',
       'forks' => 'forks',
-      'updated' => 'updated',
       _ => 'best_match',
     };
   }

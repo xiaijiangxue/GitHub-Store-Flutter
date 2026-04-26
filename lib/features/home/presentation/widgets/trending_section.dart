@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/models/repository_model.dart';
 import '../../../../shared/widgets/repository_card.dart' hide AnimatedBuilder;
 import '../../../../core/router/app_router.dart';
+import '../providers/home_provider.dart';
 
 /// A section displaying a list of repositories in a grid.
 ///
@@ -38,7 +39,7 @@ class RepoSection extends ConsumerWidget {
   /// Callback when "See All" is tapped.
   final VoidCallback? onSeeAll;
 
-  /// Callback when "Retry" is tapped after an error.
+  /// Callback when retry is tapped on error state.
   final VoidCallback? onRetry;
 
   /// Maximum number of items to display.
@@ -171,7 +172,7 @@ class RepoSection extends ConsumerWidget {
           onTap: () {
             final parts = repo.fullName.split('/');
             if (parts.length == 2) {
-              context.go(
+              context.push(
                 AppRoute.details.withParams({
                   'owner': parts[0],
                   'repo': parts[1],
@@ -180,7 +181,7 @@ class RepoSection extends ConsumerWidget {
             }
           },
           onOwnerTap: () {
-            context.go(
+            context.push(
               AppRoute.devProfile.withParams({'username': repo.ownerLogin}),
             );
           },
@@ -218,7 +219,7 @@ class RepoSection extends ConsumerWidget {
             Icon(
               Icons.inbox_outlined,
               size: 40,
-              color: theme.colorScheme.outline.withOpacity( 0.5),
+              color: theme.colorScheme.outline.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 8),
             Text(
@@ -242,7 +243,7 @@ class RepoSection extends ConsumerWidget {
             Icon(
               Icons.error_outline,
               size: 40,
-              color: theme.colorScheme.error.withOpacity( 0.7),
+              color: theme.colorScheme.error.withValues(alpha: 0.7),
             ),
             const SizedBox(height: 8),
             Text(
@@ -253,7 +254,7 @@ class RepoSection extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             FilledButton.tonal(
-              onPressed: onRetry,
+              onPressed: onRetry ?? () {},
               child: const Text('Retry'),
             ),
           ],

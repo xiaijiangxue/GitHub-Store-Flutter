@@ -143,6 +143,11 @@ class _DownloadScreenState extends ConsumerState<DownloadScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.pop(),
+          tooltip: 'Back',
+        ),
         title: Text(
           widget.owner != null
               ? '${widget.owner}/${widget.repo}'

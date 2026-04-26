@@ -234,17 +234,6 @@ class ApiConstants {
     }
   ''';
 
-  // ── GitHub Store Backend (custom) ─────────────────────────────────────
-  static const String storeApiBaseUrl = 'https://store-api.githubstore.app/v1';
-  static const String storeAppsList = '/apps';
-  static const String storeAppDetail = '/apps/{appId}';
-  static const String storeAppVersions = '/apps/{appId}/versions';
-  static const String storeAppReviews = '/apps/{appId}/reviews';
-  static const String storeCategories = '/categories';
-  static const String storeFeatured = '/featured';
-  static const String storeTrending = '/trending';
-  static const String storeInstallAttestation = '/apps/{appId}/attest';
-
   // ── Headers ────────────────────────────────────────────────────────────
   static const Map<String, String> defaultHeaders = {
     'Accept': 'application/vnd.github.v3+json',

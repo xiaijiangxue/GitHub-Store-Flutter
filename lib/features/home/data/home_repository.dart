@@ -31,13 +31,11 @@ class HomeRepository {
   /// Get trending repositories.
   ///
   /// [platform] - Filter by platform ('all', 'android', 'macos', 'windows', 'linux').
-  /// [language] - Optional programming language filter (e.g. 'Dart', 'Python').
   /// Cached for 12 hours.
   Future<List<RepositoryModel>> getTrending({
     String platform = 'all',
-    String? language,
   }) async {
-    final cacheKey = '${_trendingKey(platform)}:$language';
+    final cacheKey = _trendingKey(platform);
 
     // Try cache first (12h TTL)
     final cached = await _cache.getList<RepositoryModel>(
@@ -49,10 +47,7 @@ class HomeRepository {
 
     // Fetch from API
     final platformFilter = platform == 'all' ? null : platform;
-    final repos = await _storeApi.getTrending(
-      platform: platformFilter,
-      language: language,
-    );
+    final repos = await _storeApi.getTrending(platform: platformFilter);
 
     // Cache the result
     await _cache.putList(
@@ -70,13 +65,11 @@ class HomeRepository {
   /// Get repositories with recent hot releases.
   ///
   /// [platform] - Filter by platform.
-  /// [language] - Optional programming language filter.
   /// Cached for 6 hours.
   Future<List<RepositoryModel>> getHotReleases({
     String platform = 'all',
-    String? language,
   }) async {
-    final cacheKey = '${_hotReleasesKey(platform)}:$language';
+    final cacheKey = _hotReleasesKey(platform);
 
     final cached = await _cache.getList<RepositoryModel>(
       cacheKey,
@@ -86,10 +79,7 @@ class HomeRepository {
     if (cached != null) return cached;
 
     final platformFilter = platform == 'all' ? null : platform;
-    final repos = await _storeApi.getHotReleases(
-      platform: platformFilter,
-      language: language,
-    );
+    final repos = await _storeApi.getHotReleases(platform: platformFilter);
 
     await _cache.putList(
       cacheKey,
@@ -106,13 +96,11 @@ class HomeRepository {
   /// Get most popular repositories by stars.
   ///
   /// [platform] - Filter by platform.
-  /// [language] - Optional programming language filter.
   /// Cached for 6 hours.
   Future<List<RepositoryModel>> getMostPopular({
     String platform = 'all',
-    String? language,
   }) async {
-    final cacheKey = '${_popularKey(platform)}:$language';
+    final cacheKey = _popularKey(platform);
 
     final cached = await _cache.getList<RepositoryModel>(
       cacheKey,
@@ -122,10 +110,7 @@ class HomeRepository {
     if (cached != null) return cached;
 
     final platformFilter = platform == 'all' ? null : platform;
-    final repos = await _storeApi.getMostPopular(
-      platform: platformFilter,
-      language: language,
-    );
+    final repos = await _storeApi.getMostPopular(platform: platformFilter);
 
     await _cache.putList(
       cacheKey,

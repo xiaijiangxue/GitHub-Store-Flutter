@@ -99,7 +99,7 @@ class _StarredScreenState extends ConsumerState<StarredScreen> {
   }
 
   void _navigateToProfile() {
-    context.go(AppRoute.profile.path);
+    context.push(AppRoute.profile.path);
   }
 
   @override
@@ -111,6 +111,11 @@ class _StarredScreenState extends ConsumerState<StarredScreen> {
     if (!starredRepo.isAuthenticated) {
       return Scaffold(
         appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.pop(),
+            tooltip: 'Back',
+          ),
           title: const Text('Starred Repos'),
         ),
         body: Center(
@@ -161,6 +166,11 @@ class _StarredScreenState extends ConsumerState<StarredScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.pop(),
+          tooltip: 'Back',
+        ),
         title: const Text('Starred Repos'),
         actions: [
           IconButton(

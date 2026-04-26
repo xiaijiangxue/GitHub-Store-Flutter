@@ -222,29 +222,8 @@ class _GitHubStoreAppState extends ConsumerState<GitHubStoreApp>
     final settings = ref.read(settingsProvider);
     if (!settings.clipboardDetectionEnabled) return;
 
-    _checkClipboard();
   }
 
-  Future<void> _checkClipboard() async {
-    final settings = ref.read(settingsProvider);
-    if (!settings.clipboardDetectionEnabled || !mounted) return;
-
-    try {
-      final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
-      final text = clipboardData?.text ?? '';
-
-      if (text.isNotEmpty && text != _lastClipboardText) {
-        _lastClipboardText = text;
-
-        // Check if the clipboard contains a GitHub URL
-        if (_isGitHubUrl(text)) {
-          _showClipboardDialog(text);
-          return;
-        }
-      }
-    } catch (e) {
-      debugPrint('[Clipboard] Error checking clipboard: $e');
-    }
 
     // Check again after 3 seconds
     if (mounted) {

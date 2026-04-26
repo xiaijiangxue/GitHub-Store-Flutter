@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/models/repository_model.dart';
 import '../../../core/router/app_router.dart';
-import '../providers/search_provider.dart';
+import 'providers/search_provider.dart';
 
 /// Search screen with real GitHub Search API integration.
 class SearchScreen extends ConsumerStatefulWidget {

@@ -166,7 +166,6 @@ class _GitHubStoreAppState extends ConsumerState<GitHubStoreApp>
     // check that compares the current state with the last known state.
     SettingsModel? lastSettings;
 
-    return Stream.periodic(const Duration(seconds: 1)).listen((_) {
       if (!mounted) return;
 
       final settings = ref.read(settingsProvider);

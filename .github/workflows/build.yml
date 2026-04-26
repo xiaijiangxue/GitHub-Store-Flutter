@@ -82,10 +82,10 @@ jobs:
 
       - name: Package macOS
         run: |
-          mkdir -p package/GitHub-Store-Flutter.app
-          cp -r build/macos/Build/Products/Release/GitHub-Store-Flutter.app/* package/GitHub-Store-Flutter.app/
+          mkdir -p package/github_store_flutter.app
+          cp -r build/macos/Build/Products/Release/github_store_flutter.app/* package/GitHub-Store-Flutter.app/
           cd package
-          zip -r -9 ../GitHub-Store-Flutter-macOS.zip GitHub-Store-Flutter.app/
+          zip -r -9 ../GitHub-Store-Flutter-macOS.zip github_store_flutter.app/
           cd ..
 
       - name: Upload Artifact
